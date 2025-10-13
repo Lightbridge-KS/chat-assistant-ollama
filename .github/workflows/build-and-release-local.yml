@@ -60,13 +60,22 @@ jobs:
       - name: Create zip artifact
         run: |
           cd out
-          zip -r ../ollama-chat-${{ steps.version.outputs.VERSION }}.zip .
+          zip -r ../ollama-chat-localhost-${{ steps.version.outputs.VERSION }}.zip .
           cd ..
-          echo "Created: ollama-chat-${{ steps.version.outputs.VERSION }}.zip ($(du -h ollama-chat-*.zip | cut -f1))"
+          echo "Created: ollama-chat-localhost-${{ steps.version.outputs.VERSION }}.zip ($(du -h ollama-chat-localhost-*.zip | cut -f1))"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ollama-chat-${{ steps.version.outputs.VERSION }}
-          path: ollama-chat-${{ steps.version.outputs.VERSION }}.zip
+          name: ollama-chat-localhost-${{ steps.version.outputs.VERSION }}
+          path: ollama-chat-localhost-${{ steps.version.outputs.VERSION }}.zip
           retention-days: 30
+
+      - name: Upload to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ollama-chat-localhost-${{ steps.version.outputs.VERSION }}.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: false
