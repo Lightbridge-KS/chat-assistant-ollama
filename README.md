@@ -13,7 +13,8 @@ Next.js chat application using [assistant-ui](https://github.com/Yonom/assistant
 1. **Start Ollama** and pull at least one model:
 ```bash
 ollama pull gemma3:latest
-# or any other model
+# or for vision support:
+ollama pull llava
 ```
 
 2. **Install dependencies:**
@@ -28,6 +29,20 @@ npm run dev
 
 4. **Open** [http://localhost:3000](http://localhost:3000)
 
+## Usage
+
+### Vision/Image Support
+
+To use vision capabilities:
+1. Pull a vision-capable model: `ollama pull llava` or `ollama pull llama3.2-vision`
+2. Select the vision model from the dropdown
+3. Click the + button in the message composer
+4. Upload an image (JPEG, PNG, WebP, GIF up to 20MB)
+5. Type your question about the image
+6. Send - the model will analyze the image and respond
+
+**Note:** Regular text-only models (gemma3, llama3, etc.) cannot process images.
+
 ## Features
 
 - 🔄 Dynamic model selection from available Ollama models
@@ -35,6 +50,7 @@ npm run dev
 - 🎨 Markdown rendering with syntax highlighting
 - 💾 Thread persistence with localStorage
 - ⚡ Real-time model switching
+- 🖼️ Vision/Image support - Upload images with text for vision-capable models (llava, llama3.2-vision)
 
 ## Tech Stack
 

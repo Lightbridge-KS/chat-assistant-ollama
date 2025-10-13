@@ -3,38 +3,24 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
+// Load on demand (local font loads very fast)
 const geistSans = localFont({
-  src: [
-    {
-      path: "./fonts/Geist/Geist[wght].woff2",
-      weight: "100 900",  // Variable range
-      style: "normal",
-    },
-    {
-      path: "./fonts/Geist/Geist-Italic[wght].woff2", 
-      weight: "100 900",
-      style: "italic",
-    },
-  ],
+  src: "./fonts/Geist/Geist[wght].woff2",
+  weight: "100 900",
+  style: "normal",
   variable: "--font-geist-sans",
   display: "swap",
+  preload: false,
 });
 
+// Load on demand (only used in code blocks)
 const geistMono = localFont({
-  src: [
-    {
-      path: "./fonts/GeistMono/GeistMono[wght].woff2",
-      weight: "100 900",
-      style: "normal",
-    },
-    {
-      path: "./fonts/GeistMono/GeistMono-Italic[wght].woff2",
-      weight: "100 900",
-      style: "italic",
-    },
-  ],
+  src: "./fonts/GeistMono/GeistMono[wght].woff2",
+  weight: "100 900",
+  style: "normal",
   variable: "--font-geist-mono",
   display: "swap",
+  preload: false,
 });
 
 // const geistSans = Geist({
