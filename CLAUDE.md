@@ -32,6 +32,7 @@ Ollama Server (configurable endpoint)
 - ✅ Markdown rendering with syntax highlighting
 - ✅ Multi-thread management in sidebar
 - ✅ Configurable Ollama endpoint via build-time environment variables
+- ✅ **Vision/Image Support** - Upload images with text for vision-capable models
 
 ## Project Structure
 
@@ -55,14 +56,16 @@ components/
 │   ├── threadlist-sidebar.tsx  # Sidebar wrapper
 │   ├── model-selector.tsx  # Model dropdown (uses ollama/browser)
 │   ├── markdown-text.tsx   # Markdown renderer
-│   └── shiki-highlighter.tsx   # Syntax highlighting
+│   ├── shiki-highlighter.tsx   # Syntax highlighting
+│   └── attachment.tsx      # Image attachment UI components
 └── ui/
     ├── select.tsx          # Radix Select wrapper
     └── [other shadcn components]
 
 lib/
 ├── ollama-client.ts        # Ollama browser client (direct API calls)
-├── ollama-runtime.ts       # Custom runtime adapter for assistant-ui
+├── ollama-runtime.ts       # Custom runtime adapter for assistant-ui (with vision support)
+├── vision-image-adapter.ts # Attachment adapter for vision-capable models
 └── stores/
     └── model-store.ts      # Zustand store for selected model
 
@@ -164,6 +167,111 @@ const runtime = useOllamaRuntime();
 - Model selector fetches directly from Ollama API
 - Runtime adapter handles streaming chat
 - No Next.js API routes involved
+
+## Vision/Image Support
+
+### Overview
+
+The application supports sending images to vision-capable LLMs (like llava, llama3.2-vision) alongside text messages. Images are processed entirely in the browser using the FileReader API.
+
+### Implementation
+
+**File:** `/lib/vision-image-adapter.ts`
+
+```typescript
+import type { AttachmentAdapter } from "@assistant-ui/react";
+
+export class VisionImageAdapter implements AttachmentAdapter {
+  accept = "image/jpeg,image/png,image/webp,image/gif";
+
+  async add({ file }: { file: File }) {
+    // Validate file size (20MB limit)
+    const maxSize = 20 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new Error("Image size exceeds 20MB limit");
+    }
+
+    return {
+      id: crypto.randomUUID(),
+      type: "image",
+      name: file.name,
+      contentType: file.type,
+      file,
+      status: { type: "running", reason: "uploading", progress: 0 },
+    };
+  }
+
+  async send(attachment: PendingAttachment) {
+    // Convert File to base64 data URL
+    const base64 = await this.fileToBase64DataURL(attachment.file);
+
+    return {
+      ...attachment,
+      content: [{ type: "image", image: base64 }],
+      status: { type: "complete" },
+    };
+  }
+}
+```
+
+**File:** `/lib/ollama-runtime.ts`
+
+The runtime extracts images from `msg.attachments` (not `msg.content`) and strips the data URL prefix before sending to Ollama:
+
+```typescript
+// Extract images from attachments
+const attachments = (msg.attachments || []) as MessageAttachment[];
+const imageContent = attachments
+  .filter((att) => att.type === "image" && att.content)
+  .flatMap((att) =>
+    att.content
+      .filter((c) => c.type === "image" && c.image)
+      .map((c) => {
+        // Strip "data:image/jpeg;base64," prefix for Ollama
+        return c.image.split(",")[1];
+      })
+  );
+
+// Add to Ollama message
+if (imageContent.length > 0) {
+  ollamaMsg.images = imageContent; // Array of base64 strings
+}
+```
+
+### Key Points
+
+1. **Image Location:** Images are in `msg.attachments[].content[]`, NOT `msg.content[]`
+2. **Base64 Format:** Ollama expects raw base64 strings, not data URLs
+3. **Browser-Only:** All image processing uses FileReader API (no server required)
+4. **Vision Models Required:** Regular models ignore images; use llava, llama3.2-vision, etc.
+5. **Multi-Image Support:** Can send multiple images per message
+
+### Supported Models
+
+Vision-capable models that work with images:
+- `llava` (7B) - Fast, good for testing
+- `llava:13b` / `llava:34b` - Better quality
+- `llama3.2-vision` (11B) - Meta's latest
+- `bakllava` - Alternative option
+
+### UI Components
+
+**File:** `/components/assistant-ui/attachment.tsx`
+
+Provides:
+- Image upload button (+ icon in composer)
+- Thumbnail preview in composer
+- Full-size image preview dialog
+- Remove attachment button
+- Image display in messages
+
+### Usage
+
+1. Select a vision-capable model from dropdown
+2. Click + button in message composer
+3. Upload image (JPEG, PNG, WebP, GIF)
+4. Type your message
+5. Send - model will analyze image and respond
 
 ## Build and Deployment
 
@@ -345,6 +453,19 @@ All phases completed successfully. The CSR/SPA static export is fully functional
    - Added npm scripts for different build targets
    - `build:local`, `build:prod`, `serve`, `clean`
 
+6. **Vision/Image Support** ✅
+   - Implemented VisionImageAdapter for image attachments
+   - Images extracted from msg.attachments (not msg.content)
+   - Base64 data URL prefix stripped for Ollama API compatibility
+   - Works with vision-capable models (llava, llama3.2-vision, etc.)
+   - Full UI support: upload, preview, remove, display in messages
+
+7. **Performance Optimizations** ✅
+   - Disabled font preloading to eliminate browser warnings
+   - Local fonts load on-demand (very fast, no network request)
+   - Removed unused italic font variants from preload
+   - Zero Chrome DevTools console warnings
+
 ### Testing Checklist:
 
 - ✅ Build completes without errors
@@ -354,6 +475,8 @@ All phases completed successfully. The CSR/SPA static export is fully functional
 - ✅ Chat streaming works
 - ✅ Model switching preserves threads
 - ✅ Works offline (no internet required)
+- ✅ Image upload with vision models works
+- ✅ Zero browser console warnings
 
 ### Future Enhancement (Optional)
 
