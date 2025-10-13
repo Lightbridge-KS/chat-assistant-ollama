@@ -52,7 +52,7 @@ export const Assistant = () => {
               <Separator orientation="vertical" className="mr-2 h-4" />
               <Breadcrumb>
                 <BreadcrumbList>
-                  <BreadcrumbItem className="hidden md:block">
+                  {/* <BreadcrumbItem className="hidden md:block">
                     <BreadcrumbLink
                       href="https://www.assistant-ui.com/docs/getting-started"
                       target="_blank"
@@ -61,7 +61,7 @@ export const Assistant = () => {
                       Build Your Own Ollama UX
                     </BreadcrumbLink>
                   </BreadcrumbItem>
-                  <BreadcrumbSeparator className="hidden md:block" />
+                  <BreadcrumbSeparator className="hidden md:block" /> */}
                   <BreadcrumbItem>
                     <BreadcrumbPage>Ollama Chat</BreadcrumbPage>
                   </BreadcrumbItem>
