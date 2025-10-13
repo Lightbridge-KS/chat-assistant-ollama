@@ -108,16 +108,24 @@ export function useOllamaRuntime() {
         return ollamaMsg;
       });
 
+      // Prepend system message as first element
+      const systemMessage = {
+        role: "system",
+        content: "You are a helpful assistance.",
+      };
+
+      const messagesWithSystem = [systemMessage, ...ollamaMessages];
+
       try {
         // Debug: Log what we're sending to Ollama
         console.log("[Ollama Runtime] Sending to Ollama:", {
           model,
-          messageCount: ollamaMessages.length,
-          messagesWithImages: ollamaMessages.filter((m) => m.images?.length).length,
+          messageCount: messagesWithSystem.length,
+          messagesWithImages: messagesWithSystem.filter((m) => (m as any).images?.length).length,
           lastMessage: {
-            role: ollamaMessages[ollamaMessages.length - 1]?.role,
-            contentLength: ollamaMessages[ollamaMessages.length - 1]?.content.length,
-            imageCount: ollamaMessages[ollamaMessages.length - 1]?.images?.length || 0,
+            role: messagesWithSystem[messagesWithSystem.length - 1]?.role,
+            contentLength: messagesWithSystem[messagesWithSystem.length - 1]?.content.length,
+            imageCount: (messagesWithSystem[messagesWithSystem.length - 1] as any)?.images?.length || 0,
           },
         });
 
@@ -127,7 +135,7 @@ export function useOllamaRuntime() {
         // Stream chat from Ollama
         const response = await ollamaClient.chat({
           model,
-          messages: ollamaMessages,
+          messages: messagesWithSystem,
           stream: true,
         });
 
