@@ -1,25 +1,45 @@
-This is the [assistant-ui](https://github.com/Yonom/assistant-ui) starter project.
+# Ollama Chat Assistant
+
+Next.js chat application using [assistant-ui](https://github.com/Yonom/assistant-ui) with local LLM integration via Ollama.
+
+## Prerequisites
+
+- **Ollama** must be installed and running locally
+- Install from: https://ollama.ai
+- Default endpoint: `http://localhost:11434`
 
 ## Getting Started
 
-First, add your OpenAI API key to `.env.local` file:
-
+1. **Start Ollama** and pull at least one model:
+```bash
+ollama pull gemma3:latest
+# or any other model
 ```
-OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+2. **Install dependencies:**
+```bash
+npm install
 ```
 
-Then, run the development server:
-
+3. **Run development server:**
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. **Open** [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Features
+
+- 🔄 Dynamic model selection from available Ollama models
+- 💬 Multi-thread conversation management
+- 🎨 Markdown rendering with syntax highlighting
+- 💾 Thread persistence with localStorage
+- ⚡ Real-time model switching
+
+## Tech Stack
+
+- Next.js 15.5 (App Router)
+- assistant-ui (React chat components)
+- Ollama (Local LLM provider)
+- Zustand (State management)
+- Radix UI + Tailwind CSS
