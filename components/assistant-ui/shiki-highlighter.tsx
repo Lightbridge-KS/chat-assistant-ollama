@@ -33,8 +33,6 @@ export const SyntaxHighlighter: FC<HighlighterProps> = ({
   className,
   addDefaultStyles = false, // assistant-ui requires custom base styles
   showLanguage = false, // assistant-ui/react-markdown handles language labels
-  node: _node,
-  components: _components,
   ...props
 }) => {
   return (

@@ -1,10 +1,6 @@
 "use client";
 
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
-import {
-  useChatRuntime,
-  AssistantChatTransport,
-} from "@assistant-ui/react-ai-sdk";
 import { Thread } from "@/components/assistant-ui/thread";
 import {
   SidebarInset,
@@ -24,24 +20,23 @@ import {
 import { ModelSelector } from "@/components/assistant-ui/model-selector";
 import { useModelStore } from "@/lib/stores/model-store";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useOllamaRuntime } from "@/lib/ollama-runtime";
 
 export const Assistant = () => {
   const selectedModel = useModelStore((state) => state.selectedModel);
 
-  const runtime = useChatRuntime({
-    transport: new AssistantChatTransport({
-      api: "/api/chat",
-      body: () => ({
-        model: useModelStore.getState().selectedModel,
-      }),
-    }),
-  });
+  // Use custom Ollama runtime for static SPA
+  const runtime = useOllamaRuntime();
 
-  // Wait for model to be selected before rendering
+  // Wait for model to be selected before rendering thread
   if (!selectedModel) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen flex-col items-center justify-center gap-4">
         <Skeleton className="h-10 w-64" />
+        {/* Render ModelSelector hidden to let it fetch models */}
+        <div className="hidden">
+          <ModelSelector />
+        </div>
       </div>
     );
   }

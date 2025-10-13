@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { useModelStore } from "@/lib/stores/model-store";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ollamaClient } from "@/lib/ollama-client";
 
 interface OllamaModel {
   name: string;
@@ -27,18 +28,24 @@ export function ModelSelector() {
     const fetchModels = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch("/api/models");
-        if (!response.ok) {
-          throw new Error("Failed to fetch models");
-        }
-        const data = await response.json();
-        setModels(data);
+        // Use ollama browser client directly
+        const response = await ollamaClient.list();
+
+        // Map to expected format
+        const modelList = response.models.map((m) => ({
+          name: m.name,
+          model: m.model,
+        }));
+
+        setModels(modelList);
 
         // Auto-select first model if no model is selected or selected model doesn't exist
-        if (data.length > 0) {
-          const modelExists = data.some((m: OllamaModel) => m.name === selectedModel);
+        if (modelList.length > 0) {
+          const modelExists = modelList.some(
+            (m: OllamaModel) => m.name === selectedModel
+          );
           if (!selectedModel || !modelExists) {
-            setSelectedModel(data[0].name);
+            setSelectedModel(modelList[0].name);
           }
         }
       } catch (err) {

@@ -5,6 +5,10 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:local": "NEXT_PUBLIC_OLLAMA_BASE_URL=http://localhost:11434 next build",
+    "build:prod": "NEXT_PUBLIC_OLLAMA_BASE_URL=http://10.6.135.213:80 next build",
+    "serve": "cd out && python3 -m http.server 8000",
+    "clean": "rm -rf out .next",
     "start": "next start",
     "lint": "next lint",
     "prettier": "prettier --check .",
