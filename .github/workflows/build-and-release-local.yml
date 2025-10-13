@@ -7,7 +7,7 @@ on:
     paths-ignore:
       - '**.md'
   release:
-    types: [created]
+    types: [published]
 
 permissions:
   contents: write  # This gives permission to create releases
