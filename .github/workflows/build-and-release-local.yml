@@ -1,0 +1,72 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+  release:
+    types: [created]
+
+permissions:
+  contents: write  # This gives permission to create releases
+
+jobs:
+  build:
+    name: Build for Localhost
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for localhost
+        run: npm run build:local
+
+      - name: Verify build output
+        run: |
+          if [ ! -d "out" ]; then
+            echo "Error: out directory not found"
+            exit 1
+          fi
+          if [ -z "$(ls -A out)" ]; then
+            echo "Error: out directory is empty"
+            exit 1
+          fi
+          echo "Build output verified: $(du -sh out)"
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          else
+            SHA_SHORT="${{ github.sha }}"
+            VERSION="dev-${SHA_SHORT:0:7}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Create zip artifact
+        run: |
+          cd out
+          zip -r ../ollama-chat-${{ steps.version.outputs.VERSION }}.zip .
+          cd ..
+          echo "Created: ollama-chat-${{ steps.version.outputs.VERSION }}.zip ($(du -h ollama-chat-*.zip | cut -f1))"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollama-chat-${{ steps.version.outputs.VERSION }}
+          path: ollama-chat-${{ steps.version.outputs.VERSION }}.zip
+          retention-days: 30
