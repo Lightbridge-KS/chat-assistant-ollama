@@ -118,24 +118,24 @@ const ThreadSuggestions: FC = () => {
     <div className="aui-thread-welcome-suggestions grid w-full gap-2 pb-4 @md:grid-cols-2">
       {[
         {
-          title: "What's the weather",
-          label: "in San Francisco?",
-          action: "What's the weather in San Francisco?",
+          title: "What's the definition",
+          label: "of crazy-paving pattern in chest CT?",
+          action: "What's the definition of crazy-paving pattern in chest CT?",
         },
         {
-          title: "Explain React hooks",
-          label: "like useState and useEffect",
-          action: "Explain React hooks like useState and useEffect",
+          title: "Explain MRI slice selection",
+          label: "to a radiology resident",
+          action: "Explain MRI slice selection to a radiology resident",
         },
         {
-          title: "Write a SQL query",
-          label: "to find top customers",
-          action: "Write a SQL query to find top customers",
+          title: "Write radiology report template",
+          label: "for a patient with acute stroke",
+          action: "Write radiology report template for a patient with acute stroke",
         },
         {
-          title: "Create a meal plan",
-          label: "for healthy weight loss",
-          action: "Create a meal plan for healthy weight loss",
+          title: "Explain what a CTDI and DLP is",
+          label: "to a radiology resident",
+          action: "Explain what a CTDI and DLP is to a radiology resident",
         },
       ].map((suggestedAction, index) => (
         <m.div
