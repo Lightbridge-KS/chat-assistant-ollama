@@ -129,11 +129,11 @@ export function useOllamaRuntime() {
         console.log("[Ollama Runtime] Sending to Ollama:", {
           model,
           messageCount: messagesWithSystem.length,
-          messagesWithImages: messagesWithSystem.filter((m) => (m as any).images?.length).length,
+          messagesWithImages: messagesWithSystem.filter((m) => (m).images?.length).length,
           lastMessage: {
             role: messagesWithSystem[messagesWithSystem.length - 1]?.role,
             contentLength: messagesWithSystem[messagesWithSystem.length - 1]?.content.length,
-            imageCount: (messagesWithSystem[messagesWithSystem.length - 1] as any)?.images?.length || 0,
+            imageCount: (messagesWithSystem[messagesWithSystem.length - 1])?.images?.length || 0,
           },
         });
 
