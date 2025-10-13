@@ -223,6 +223,30 @@ npx serve out
 # Open: http://localhost:8000
 ```
 
+### GitHub Actions Workflows
+
+Two separate workflows for automated builds:
+
+**Local Build** (`.github/workflows/build-and-release-local.yml`):
+- Builds with `npm run build:local` (localhost URL)
+- Creates artifact: `ollama-chat-localhost-{version}.zip`
+- Triggers: Push to main (excluding `*.md`), Release creation
+- Node.js 24, npm ci, build verification
+
+**Production Build** (`.github/workflows/build-and-release-prod.yml`):
+- Builds with `npm run build:prod` (hospital IP)
+- Creates artifact: `ollama-chat-{version}.zip`
+- Triggers: Push to main (excluding `*.md`), Release creation
+- Node.js 24, npm ci, build verification
+
+**Version Naming:**
+- Release: Uses Git tag (e.g., `v1.0.0`)
+- Push: Uses commit SHA (e.g., `dev-c66471f`)
+
+**Artifact Management:**
+- Uploaded to GitHub Actions (30-day retention)
+- Uploaded to GitHub Release page (on release events)
+
 ## Important Notes for Future Development
 
 1. **Model Changes:**

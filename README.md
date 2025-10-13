@@ -38,8 +38,29 @@ npm run dev
 
 ## Tech Stack
 
-- Next.js 15.5 (App Router)
+- Next.js 15.5 (Static Export / CSR/SPA)
 - assistant-ui (React chat components)
-- Ollama (Local LLM provider)
+- ollama/browser (Direct browser-to-Ollama API)
 - Zustand (State management)
 - Radix UI + Tailwind CSS
+
+## Build and Deploy
+
+```bash
+# Build for local testing (localhost:11434)
+npm run build:local
+
+# Build for production (hospital IP)
+npm run build:prod
+
+# Serve static build
+npm run serve
+```
+
+**GitHub Actions:** Automated workflows build both local and production variants on push/release.
+
+## Deployment
+
+The app exports to static HTML/CSS/JS in the `/out` directory. Deploy to any HTTP server (nginx, Apache, etc.) with access to an Ollama server. No Node.js runtime required.
+
+**See CLAUDE.md for detailed documentation.**
