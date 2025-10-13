@@ -1,7 +1,7 @@
 "use client";
 
+import { SyntaxHighlighter } from "./shiki-highlighter";
 import "@assistant-ui/react-markdown/styles/dot.css";
-
 import {
   type CodeHeaderProps,
   MarkdownTextPrimitive,
@@ -67,6 +67,7 @@ const useCopyToClipboard = ({
 };
 
 const defaultComponents = memoizeMarkdownComponents({
+  SyntaxHighlighter: SyntaxHighlighter,
   h1: ({ className, ...props }) => (
     <h1
       className={cn(
