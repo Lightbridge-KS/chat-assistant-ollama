@@ -11,9 +11,14 @@ const customOllama = createOllama({
 });
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  const { messages, model }: { messages: UIMessage[]; model?: string } =
+    await req.json();
+
+  // Use provided model or fallback to default
+  const selectedModel = model || "gemma3:latest";
+
   const result = streamText({
-    model: ollama("gemma3:latest"),
+    model: ollama(selectedModel),
     system: "You are a helpful assistant.",
     messages: convertToModelMessages(messages),
   });

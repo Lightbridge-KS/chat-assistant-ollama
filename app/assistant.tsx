@@ -21,13 +21,30 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { ModelSelector } from "@/components/assistant-ui/model-selector";
+import { useModelStore } from "@/lib/stores/model-store";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Assistant = () => {
+  const selectedModel = useModelStore((state) => state.selectedModel);
+
   const runtime = useChatRuntime({
     transport: new AssistantChatTransport({
       api: "/api/chat",
+      body: () => ({
+        model: useModelStore.getState().selectedModel,
+      }),
     }),
   });
+
+  // Wait for model to be selected before rendering
+  if (!selectedModel) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Skeleton className="h-10 w-64" />
+      </div>
+    );
+  }
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
@@ -55,9 +72,12 @@ export const Assistant = () => {
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
+              <div className="ml-auto">
+                <ModelSelector />
+              </div>
             </header>
             <div className="flex-1 overflow-hidden">
-              <Thread />
+              <Thread key={selectedModel} />
             </div>
           </SidebarInset>
         </div>
