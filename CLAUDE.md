@@ -69,7 +69,7 @@ lib/
 └── stores/
     └── model-store.ts      # Zustand store for selected model
 
-.env.local                  # Dev: http://localhost:11434
+.env.development                  # Dev: http://localhost:11434
 .env.production             # Prod: http://10.6.135.213:80
 .env.example                # Documentation for environment variables
 ```
@@ -80,7 +80,7 @@ lib/
 
 ### Environment Variables (Build-Time)
 
-**Development** (`.env.local`):
+**Development** (`.env.development`):
 ```bash
 NEXT_PUBLIC_OLLAMA_BASE_URL=http://localhost:11434
 ```

@@ -110,7 +110,7 @@ export default nextConfig;
 
 Create **build-time** environment variables for Ollama endpoints:
 
-**File:** `.env.local` (Development)
+**File:** `.env.development` (Development)
 
 ```bash
 NEXT_PUBLIC_OLLAMA_BASE_URL=http://localhost:11434
@@ -748,7 +748,7 @@ if (!selectedModel || !modelExists) {
 npm run dev
 ```
 
-**Uses:** `.env.local` (localhost:11434)
+**Uses:** `.env.development` (localhost:11434)
 
 ### Production Build
 
