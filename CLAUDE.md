@@ -15,13 +15,28 @@ Next.js chat application using `assistant-ui` library with local LLM integration
 - **Fonts:** Local Geist fonts (no CDN dependencies)
 
 ### Deployment Model
+
+**Two Build Targets:**
+
+1. **Localhost Build** (`npm run build:localhost`):
 ```
-Static Files (HTML/CSS/JS)
+Static Files (HTML/CSS/JS) at root path /
+  ↓ Direct connection
+Ollama at http://localhost:11434
+```
+
+2. **Hospital Production Build** (`npm run build:prod`):
+```
+Browser → http://10.6.34.95/radchat
   ↓
-Nginx/HTTP Server
-  ↓ (Direct connection)
-Ollama Server (configurable endpoint)
+Nginx Server (10.6.34.95)
+  ├─ /radchat/            → Serve static files
+  └─ /radchat/api/ollama/ → Proxy to Ollama
+       ↓
+Ollama Server (10.6.135.213:80)
 ```
+
+The production build uses nginx reverse proxy to avoid CORS issues.
 
 ### Key Features
 - ✅ Pure static export (no Node.js runtime required)
@@ -83,28 +98,23 @@ lib/
 **Development** (`.env.development`):
 ```bash
 NEXT_PUBLIC_OLLAMA_BASE_URL=http://localhost:11434
+NEXT_PUBLIC_IS_LOCALHOST=true
 ```
 
 **Production** (`.env.production`):
 ```bash
-NEXT_PUBLIC_OLLAMA_BASE_URL=http://10.6.135.213:80
+# Uses nginx reverse proxy to avoid CORS
+NEXT_PUBLIC_OLLAMA_BASE_URL=/api/ollama
+NEXT_PUBLIC_IS_LOCALHOST=false
 ```
 
 These are **build-time** variables that get embedded into the static bundle during `npm run build`.
 
+**Important:** The production build uses a relative path `/api/ollama` which is proxied by nginx to the Ollama server at `http://10.6.135.213:80`. This avoids CORS issues.
+
 ### Ollama Browser Client
 
 **File:** `/lib/ollama-client.ts`
-
-```typescript
-import { Ollama } from 'ollama/browser'
-
-const baseUrl = process.env.NEXT_PUBLIC_OLLAMA_BASE_URL || 'http://localhost:11434'
-
-export const ollamaClient = new Ollama({
-  host: baseUrl,
-})
-```
 
 - Uses official `ollama/browser` package for browser-compatible API calls
 - Configurable endpoint via environment variable
@@ -311,12 +321,20 @@ NEXT_PUBLIC_OLLAMA_BASE_URL=http://10.6.135.213:80 npm run build
 **File:** `next.config.ts`
 
 ```typescript
+// Dynamic basePath based on deployment target
+const isLocalhost = process.env.NEXT_PUBLIC_IS_LOCALHOST === 'true';
+
 const nextConfig: NextConfig = {
-  output: "export",           // Static export
-  images: { unoptimized: true },  // No image optimization
-  trailingSlash: true,         // Better for static hosting
+  output: "export",                    // Static export
+  images: { unoptimized: true },       // No image optimization
+  trailingSlash: true,                 // Better for static hosting
+  basePath: isLocalhost ? '' : '/radchat',  // Dynamic basePath
 };
 ```
+
+**basePath behavior:**
+- Localhost build: `''` (root path) for easier local testing
+- Hospital build: `'/radchat'` for subpath deployment at `http://10.6.34.95/radchat`
 
 ### Local Testing
 
@@ -389,8 +407,8 @@ Two separate workflows for automated builds:
 
 4. **Ollama Connection:**
    - Configured via `NEXT_PUBLIC_OLLAMA_BASE_URL` at build time
-   - Direct browser-to-Ollama communication
-   - **CORS Note:** Ollama server needs CORS enabled for browser access
+   - **Localhost:** Direct connection to `http://localhost:11434` (no CORS issues)
+   - **Hospital:** Nginx reverse proxy via `/api/ollama` → `http://10.6.135.213:80` (avoids CORS)
    - Fallback model: "gemma3:latest" (if selected model not available)
 
 5. **Offline Deployment:**
@@ -478,17 +496,33 @@ All phases completed successfully. The CSR/SPA static export is fully functional
 - ✅ Image upload with vision models works
 - ✅ Zero browser console warnings
 
-### Future Enhancement (Optional)
+8. **Hospital Deployment with Nginx Proxy** ✅
+   - Implemented nginx reverse proxy configuration
+   - Production build uses `/api/ollama` relative path
+   - Eliminates CORS issues for hospital deployment
+   - Dynamic basePath: root for localhost, `/radchat` for hospital
+   - Full deployment guide available in `DEPLOYMENT.md`
 
-**Phase 4 - Nginx Reverse Proxy** (not yet implemented):
-- Configure nginx to proxy `/api/ollama` → `http://10.6.135.213:80`
-- Would eliminate CORS concerns
-- Useful if direct browser-to-Ollama connection has issues
+### Hospital Deployment
+
+**Production deployment at:** `http://10.6.34.95/radchat`
+
+The hospital production build uses nginx reverse proxy to avoid CORS issues:
 
 ```nginx
-location /api/ollama {
-    proxy_pass http://10.6.135.213:80;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
+# Serve static files
+location /radchat/ {
+    alias /var/www/radchat/;
+    try_files $uri $uri/ $uri.html =404;
+}
+
+# Proxy Ollama API
+location /radchat/api/ollama/ {
+    proxy_pass http://10.6.135.213:80/;
+    proxy_http_version 1.1;
+    proxy_buffering off;
+    proxy_read_timeout 300s;
 }
 ```
+
+**See `DEPLOYMENT.md` for complete nginx configuration and deployment instructions for hospital IT team.**

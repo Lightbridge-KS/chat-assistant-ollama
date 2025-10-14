@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "build:localhost": "cross-env NEXT_PUBLIC_IS_LOCALHOST=true next build",
-    "build:prod": "cross-env NEXT_PUBLIC_OLLAMA_BASE_URL=http://10.6.135.213:80 next build",
+    "build:prod": "cross-env NEXT_PUBLIC_IS_LOCALHOST=false next build",
     "serve": "cd out && python3 -m http.server 8000",
     "clean": "rm -rf out .next",
     "start": "next start",
