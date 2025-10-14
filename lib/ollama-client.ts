@@ -8,8 +8,12 @@
 
 import { Ollama } from 'ollama/browser'
 
+// Is build for localhost deployment
+const isLocalHost: boolean = process.env.NEXT_PUBLIC_IS_LOCALHOST === "true";
+const baseUrlLocalHost: string = 'http://localhost:11434';
+
 // Get base URL from build-time environment variable
-const baseUrl = process.env.NEXT_PUBLIC_OLLAMA_BASE_URL || 'http://localhost:11434'
+const baseUrl: string = isLocalHost ? baseUrlLocalHost : (process.env.NEXT_PUBLIC_OLLAMA_BASE_URL || baseUrlLocalHost);
 
 export const ollamaClient = new Ollama({
   host: baseUrl,

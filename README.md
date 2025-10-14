@@ -64,7 +64,7 @@ To use vision capabilities:
 
 ```bash
 # Build for local testing (localhost:11434)
-npm run build:local
+npm run build:localhost
 
 # Build for production (hospital IP)
 npm run build:prod

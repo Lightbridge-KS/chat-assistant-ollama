@@ -282,7 +282,7 @@ Provides:
 npm run dev
 
 # Build for local testing (localhost:11434)
-npm run build:local
+npm run build:localhost
 
 # Build for production deployment (hospital IP)
 npm run build:prod
@@ -336,7 +336,7 @@ npx serve out
 Two separate workflows for automated builds:
 
 **Local Build** (`.github/workflows/build-and-release-local.yml`):
-- Builds with `npm run build:local` (localhost URL)
+- Builds with `npm run build:localhost` (localhost URL)
 - Creates artifact: `ollama-chat-localhost-{version}.zip`
 - Triggers: Push to main (excluding `*.md`), Release creation
 - Node.js 24, npm ci, build verification
@@ -432,7 +432,7 @@ All phases completed successfully. The CSR/SPA static export is fully functional
    - Uses accumulation pattern instead of delta streaming
 
 2. **Static Build** ✅
-   - `npm run build:local` works (localhost)
+   - `npm run build:localhost` works (localhost)
    - `npm run build:prod` works (hospital IP)
    - Static export generates `/out` directory successfully
    - All assets bundled (fonts, CSS, JS)
@@ -451,7 +451,7 @@ All phases completed successfully. The CSR/SPA static export is fully functional
 
 5. **Build Automation** ✅
    - Added npm scripts for different build targets
-   - `build:local`, `build:prod`, `serve`, `clean`
+   - `build:localhost`, `build:prod`, `serve`, `clean`
 
 6. **Vision/Image Support** ✅
    - Implemented VisionImageAdapter for image attachments

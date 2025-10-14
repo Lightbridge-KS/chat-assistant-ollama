@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "build:local": "NEXT_PUBLIC_OLLAMA_BASE_URL=http://localhost:11434 next build",
-    "build:prod": "NEXT_PUBLIC_OLLAMA_BASE_URL=http://10.6.135.213:80 next build",
+    "build:localhost": "cross-env NEXT_PUBLIC_IS_LOCALHOST=true next build",
+    "build:prod": "cross-env NEXT_PUBLIC_OLLAMA_BASE_URL=http://10.6.135.213:80 next build",
     "serve": "cd out && python3 -m http.server 8000",
     "clean": "rm -rf out .next",
     "start": "next start",
@@ -53,6 +53,7 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "prettier": "^3.6.2",

@@ -32,7 +32,7 @@ jobs:
         run: npm ci
 
       - name: Build for localhost
-        run: npm run build:local
+        run: npm run build:localhost
 
       - name: Verify build output
         run: |

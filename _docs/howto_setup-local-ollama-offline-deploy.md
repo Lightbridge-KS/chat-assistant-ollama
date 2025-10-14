@@ -492,7 +492,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "build:local": "NEXT_PUBLIC_OLLAMA_BASE_URL=http://localhost:11434 next build",
+    "build:localhost": "NEXT_PUBLIC_OLLAMA_BASE_URL=http://localhost:11434 next build",
     "build:prod": "NEXT_PUBLIC_OLLAMA_BASE_URL=http://10.6.135.213:80 next build",
     "serve": "cd out && python3 -m http.server 8000",
     "clean": "rm -rf out .next"
@@ -506,7 +506,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 npm run dev
 
 # Build for local testing
-npm run build:local
+npm run build:localhost
 
 # Build for production
 npm run build:prod
@@ -662,7 +662,7 @@ Rebuild for different environments:
 
 ```bash
 # For localhost testing
-npm run build:local
+npm run build:localhost
 
 # For production deployment
 npm run build:prod
@@ -860,7 +860,7 @@ Environment variable embedded during build.
 Rebuild with correct URL:
 
 ```bash
-npm run build:local   # For localhost
+npm run build:localhost   # For localhost
 npm run build:prod    # For production
 ```
 
@@ -897,7 +897,7 @@ Use accumulation pattern (see [Caveat #2](#caveat-2-typescript-chatmodeladapter-
 ### Test Checklist
 
 - [ ] `npm run dev` works (development mode)
-- [ ] `npm run build:local` completes without errors
+- [ ] `npm run build:localhost` completes without errors
 - [ ] Static files generated in `/out`
 - [ ] `npm run serve` serves app correctly
 - [ ] Model dropdown loads and shows models
@@ -911,7 +911,7 @@ Use accumulation pattern (see [Caveat #2](#caveat-2-typescript-chatmodeladapter-
 
 1. **Build and serve:**
    ```bash
-   npm run build:local
+   npm run build:localhost
    npm run serve
    ```
 
