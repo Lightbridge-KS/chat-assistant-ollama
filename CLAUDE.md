@@ -104,13 +104,18 @@ NEXT_PUBLIC_IS_LOCALHOST=true
 **Production** (`.env.production`):
 ```bash
 # Uses nginx reverse proxy to avoid CORS
-NEXT_PUBLIC_OLLAMA_BASE_URL=/api/ollama
+# IMPORTANT: Must use absolute URL with full path including basePath
+NEXT_PUBLIC_OLLAMA_BASE_URL=http://10.6.34.95/radchat/api/ollama
 NEXT_PUBLIC_IS_LOCALHOST=false
 ```
 
 These are **build-time** variables that get embedded into the static bundle during `npm run build`.
 
-**Important:** The production build uses a relative path `/api/ollama` which is proxied by nginx to the Ollama server at `http://10.6.135.213:80`. This avoids CORS issues.
+**Important:** The production build uses an **absolute URL** `http://10.6.34.95/radchat/api/ollama` which includes the full path with basePath. This is required because:
+1. The `ollama/browser` library needs the complete URL for proper parsing
+2. The path must include the basePath (`/radchat`) for correct routing
+3. Nginx proxies `/radchat/api/ollama/` to the Ollama server at `http://10.6.135.213:80`
+4. Same-origin requests (browser → 10.6.34.95) avoid CORS issues
 
 ### Ollama Browser Client
 
@@ -408,7 +413,8 @@ Two separate workflows for automated builds:
 4. **Ollama Connection:**
    - Configured via `NEXT_PUBLIC_OLLAMA_BASE_URL` at build time
    - **Localhost:** Direct connection to `http://localhost:11434` (no CORS issues)
-   - **Hospital:** Nginx reverse proxy via `/api/ollama` → `http://10.6.135.213:80` (avoids CORS)
+   - **Hospital:** Absolute URL `http://10.6.34.95/radchat/api/ollama` → nginx reverse proxy → `http://10.6.135.213:80` (avoids CORS)
+   - Must use absolute URL with full path including basePath for correct routing
    - Fallback model: "gemma3:latest" (if selected model not available)
 
 5. **Offline Deployment:**
@@ -498,8 +504,8 @@ All phases completed successfully. The CSR/SPA static export is fully functional
 
 8. **Hospital Deployment with Nginx Proxy** ✅
    - Implemented nginx reverse proxy configuration
-   - Production build uses `/api/ollama` relative path
-   - Eliminates CORS issues for hospital deployment
+   - Production build uses absolute URL `http://10.6.34.95/radchat/api/ollama` (includes basePath)
+   - Eliminates CORS issues for hospital deployment (same-origin requests)
    - Dynamic basePath: root for localhost, `/radchat` for hospital
    - Full deployment guide available in `DEPLOYMENT.md`
 

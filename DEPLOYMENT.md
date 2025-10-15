@@ -215,6 +215,35 @@ proxy_read_timeout 300s;
 **Cause:** Default timeout too short
 **Fix:** Increase `proxy_read_timeout` in nginx config (currently 300s = 5 minutes)
 
+### Issue: Incorrect API URL in browser (e.g., `http://api:11434/...`)
+
+**Symptoms:**
+- Chrome DevTools shows malformed URLs like `http://api:11434/ollama/api/tags`
+- Model dropdown fails to load
+- Network errors in browser console
+
+**Cause:** The production build was configured with a relative path `/api/ollama` instead of the absolute URL with basePath.
+
+**Fix:** Verify `.env.production` uses the **absolute URL**:
+
+```bash
+# ✅ CORRECT
+NEXT_PUBLIC_OLLAMA_BASE_URL=http://10.6.34.95/radchat/api/ollama
+
+# ❌ WRONG - Missing basePath and host
+NEXT_PUBLIC_OLLAMA_BASE_URL=/api/ollama
+```
+
+**Why this matters:**
+1. The `ollama/browser` library requires a complete URL for proper parsing
+2. The URL must include the basePath (`/radchat`) for correct routing
+3. Using an absolute URL ensures same-origin requests (no CORS issues)
+
+**Verification:**
+After rebuilding with the correct URL, check the browser's network tab:
+- API calls should go to: `http://10.6.34.95/radchat/api/ollama/api/tags`
+- NOT to: `http://api:11434/...` or `/api/ollama/api/tags`
+
 ## Security Notes
 
 1. **No external internet required** - App works entirely on hospital intranet
