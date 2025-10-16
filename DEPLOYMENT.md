@@ -29,17 +29,17 @@ The application is a **pure static export** (HTML/CSS/JS) that runs entirely in 
 Extract the build artifact `ollama-chat-{version}.zip` to the nginx web root:
 
 ```bash
-# Example: Extract to /var/www/radchat
-sudo mkdir -p /var/www/radchat
-cd /var/www/radchat
+# Extract to /home/ubuntu/radchat
+sudo mkdir -p /home/ubuntu/radchat
+cd /home/ubuntu/radchat
 sudo unzip /path/to/ollama-chat-{version}.zip
 ```
 
-**Important:** The contents should be directly in `/var/www/radchat/`, not in a subdirectory.
+**Important:** The contents should be directly in `/home/ubuntu/radchat/`, not in a subdirectory.
 
 Expected structure:
 ```
-/var/www/radchat/
+/home/ubuntu/radchat/
 ├── index.html
 ├── _next/
 │   ├── static/
@@ -48,18 +48,63 @@ Expected structure:
 └── ...
 ```
 
-### 2. Configure Nginx
+### 2. Configure Ollama Server
 
-Add the following configuration to your nginx config file (usually `/etc/nginx/sites-available/default` or `/etc/nginx/conf.d/default.conf`):
+On the Ollama server (10.6.135.213), configure CORS to allow requests from the nginx server:
 
-```nginx
-server {
-    listen 80;
-    server_name 10.6.34.95;
+```bash
+sudo snap set ollama origins="*"
+```
+
+This allows the Ollama server to accept requests from any origin, which is necessary for the nginx reverse proxy to work.
+
+### 3. Configure Nginx
+
+The following is the real Nginx config that works in the hospital.
+
+**Location:** `/etc/nginx/nginx.conf` 
+
+```conf
+# Proxy Ollama API requests to the Ollama server
+    location /radchat/api/ollama/api/chat {
+
+        # Proxy to Ollama server at 10.6.135.213:80
+        proxy_pass http://10.6.135.213/api/chat;
+
+        # Essential for streaming responses
+        proxy_buffering off;
+        proxy_cache off;
+
+        # Headers for proper proxying
+        proxy_set_header Host 10.6.135.213;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Support for chunked transfer encoding (streaming)
+        chunked_transfer_encoding on;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
+        # Timeouts for long-running requests
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+    }
+
+    location /radchat/api/ollama/api/tags {
+        proxy_pass http://10.6.135.213/api/tags;
+
+        # Add the same headers here too
+        proxy_set_header Host 10.6.135.213;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 
     # Serve static Next.js app at /radchat
-    location /radchat/ {
-        alias /var/www/radchat/;
+    location /radchat {
+        alias /home/ubuntu/radchat;
 
         # Try to serve file directly, then directory, then .html, or 404
         try_files $uri $uri/ $uri.html =404;
@@ -74,37 +119,9 @@ server {
         }
     }
 
-    # Proxy Ollama API requests to the Ollama server
-    location /radchat/api/ollama/ {
-        # Proxy to Ollama server at 10.6.135.213:80
-        proxy_pass http://10.6.135.213:80/;
-
-        # HTTP version 1.1 required for streaming
-        proxy_http_version 1.1;
-
-        # Standard proxy headers
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Critical for streaming responses (don't buffer)
-        proxy_buffering off;
-        proxy_cache off;
-
-        # Timeouts for long-running LLM requests
-        proxy_read_timeout 300s;        # 5 minutes
-        proxy_connect_timeout 75s;
-        proxy_send_timeout 300s;
-
-        # WebSocket support (if needed in future)
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}
 ```
 
-### 3. Verify Nginx Configuration
+### 4. Verify Nginx Configuration
 
 Test the nginx configuration for syntax errors:
 
@@ -117,7 +134,7 @@ If successful, you should see:
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 ```
 
-### 4. Reload Nginx
+### 5. Reload Nginx
 
 Apply the new configuration:
 
@@ -127,13 +144,13 @@ sudo systemctl reload nginx
 sudo nginx -s reload
 ```
 
-### 5. Set Correct Permissions
+### 6. Set Correct Permissions
 
 Ensure nginx can read the files:
 
 ```bash
-sudo chown -R www-data:www-data /var/www/radchat
-sudo chmod -R 755 /var/www/radchat
+sudo chown -R www-data:www-data /home/ubuntu/radchat
+sudo chmod -R 755 /home/ubuntu/radchat
 ```
 
 (Adjust `www-data` if your nginx runs under a different user)
@@ -157,10 +174,10 @@ sudo chmod -R 755 /var/www/radchat
 ### Issue: 404 Not Found
 
 **Cause:** Static files not in correct location
-**Fix:** Verify files are in `/var/www/radchat/` with `index.html` at root
+**Fix:** Verify files are in `/home/ubuntu/radchat/` with `index.html` at root
 
 ```bash
-ls -la /var/www/radchat/
+ls -la /home/ubuntu/radchat/
 # Should show index.html, _next/, fonts/, etc.
 ```
 
@@ -257,12 +274,12 @@ To update to a new version:
 
 1. Extract new build artifact to temporary location
 2. Stop nginx: `sudo systemctl stop nginx`
-3. Backup old version: `sudo mv /var/www/radchat /var/www/radchat.backup`
-4. Copy new version: `sudo cp -r /tmp/new-build /var/www/radchat`
-5. Fix permissions: `sudo chown -R www-data:www-data /var/www/radchat`
+3. Backup old version: `sudo mv /home/ubuntu/radchat /home/ubuntu/radchat.backup`
+4. Copy new version: `sudo cp -r /tmp/new-build /home/ubuntu/radchat`
+5. Fix permissions: `sudo chown -R www-data:www-data /home/ubuntu/radchat`
 6. Start nginx: `sudo systemctl start nginx`
 7. Test application
-8. Remove backup: `sudo rm -rf /var/www/radchat.backup`
+8. Remove backup: `sudo rm -rf /home/ubuntu/radchat.backup`
 
 ## Configuration Files Location
 

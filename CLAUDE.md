@@ -513,22 +513,67 @@ All phases completed successfully. The CSR/SPA static export is fully functional
 
 **Production deployment at:** `http://10.6.34.95/radchat`
 
-The hospital production build uses nginx reverse proxy to avoid CORS issues:
+The hospital production build uses nginx reverse proxy to avoid CORS issues.
 
+**Ollama Server Configuration (10.6.135.213):**
+```bash
+sudo snap set ollama origins="*"
+```
+
+**Nginx Configuration (Location: `/etc/nginx/nginx.conf`):**
 ```nginx
-# Serve static files
-location /radchat/ {
-    alias /var/www/radchat/;
-    try_files $uri $uri/ $uri.html =404;
+# Proxy Ollama API requests to the Ollama server
+location /radchat/api/ollama/api/chat {
+    # Proxy to Ollama server at 10.6.135.213:80
+    proxy_pass http://10.6.135.213/api/chat;
+
+    # Essential for streaming responses
+    proxy_buffering off;
+    proxy_cache off;
+
+    # Headers for proper proxying
+    proxy_set_header Host 10.6.135.213;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # Support for chunked transfer encoding (streaming)
+    chunked_transfer_encoding on;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+
+    # Timeouts for long-running requests
+    proxy_connect_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_read_timeout 300s;
 }
 
-# Proxy Ollama API
-location /radchat/api/ollama/ {
-    proxy_pass http://10.6.135.213:80/;
-    proxy_http_version 1.1;
-    proxy_buffering off;
-    proxy_read_timeout 300s;
+location /radchat/api/ollama/api/tags {
+    proxy_pass http://10.6.135.213/api/tags;
+
+    # Add the same headers here too
+    proxy_set_header Host 10.6.135.213;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+# Serve static Next.js app at /radchat
+location /radchat {
+    alias /home/ubuntu/radchat;
+
+    # Try to serve file directly, then directory, then .html, or 404
+    try_files $uri $uri/ $uri.html =404;
+
+    # Serve index.html by default
+    index index.html;
+
+    # Cache static assets
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
 }
 ```
 
-**See `DEPLOYMENT.md` for complete nginx configuration and deployment instructions for hospital IT team.**
+**See `DEPLOYMENT.md` for complete deployment instructions for hospital IT team.**
