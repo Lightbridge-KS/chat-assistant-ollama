@@ -27,7 +27,7 @@ export class VisionImageAdapter implements AttachmentAdapter {
     }
 
     return {
-      id: crypto.randomUUID(),
+      id: this.generateUUID(),
       type: "image",
       name: file.name,
       contentType: file.type,
@@ -67,6 +67,27 @@ export class VisionImageAdapter implements AttachmentAdapter {
   async remove() {
     // No-op: cleanup handled by browser garbage collection
     // File URLs are revoked by the UI component
+  }
+
+  /**
+   * Generate UUID with fallback for insecure contexts
+   *
+   * crypto.randomUUID() requires secure context (HTTPS or localhost).
+   * Hospital deployment uses HTTP on local IP, so we need a fallback.
+   */
+  private generateUUID(): string {
+    // Try crypto.randomUUID() first (works in HTTPS and localhost)
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+
+    // Fallback: Generate RFC4122 version 4 UUID manually
+    // Format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
   }
 
   private fileToBase64DataURL(file: File): Promise<string> {

@@ -207,7 +207,7 @@ export class VisionImageAdapter implements AttachmentAdapter {
     }
 
     return {
-      id: crypto.randomUUID(),
+      id: this.generateUUID(), // Uses fallback for HTTP contexts
       type: "image",
       name: file.name,
       contentType: file.type,
@@ -225,6 +225,19 @@ export class VisionImageAdapter implements AttachmentAdapter {
       content: [{ type: "image", image: base64 }],
       status: { type: "complete" },
     };
+  }
+
+  // UUID generation with fallback for insecure contexts (HTTP)
+  private generateUUID(): string {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      return crypto.randomUUID(); // HTTPS or localhost
+    }
+    // Fallback for HTTP (hospital deployment)
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
   }
 }
 ```
@@ -260,6 +273,7 @@ if (imageContent.length > 0) {
 3. **Browser-Only:** All image processing uses FileReader API (no server required)
 4. **Vision Models Required:** Regular models ignore images; use llava, llama3.2-vision, etc.
 5. **Multi-Image Support:** Can send multiple images per message
+6. **HTTP Compatibility:** Uses UUID fallback for insecure contexts (hospital HTTP deployment works)
 
 ### Supported Models
 
