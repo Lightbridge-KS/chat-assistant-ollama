@@ -13,7 +13,8 @@ Location: `/etc/nginx/nginx.conf`
 ```conf
 # Proxy Ollama API requests to the Ollama server
     location /radchat/api/ollama/api/chat {
-
+        # Allow larger request bodies for image uploads
+        client_max_body_size 20M;
         # Proxy to Ollama server at 10.6.135.213:80
         proxy_pass http://10.6.135.213/api/chat;
 
