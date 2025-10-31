@@ -8,6 +8,7 @@ import { useLocalRuntime } from "@assistant-ui/react";
 import type { ChatModelAdapter, ThreadMessage } from "@assistant-ui/react";
 import { ollamaClient } from "./ollama-client";
 import { useModelStore } from "./stores/model-store";
+import { useSettingsStore } from "./stores/settings-store";
 import { VisionImageAdapter } from "./vision-image-adapter";
 
 // Type for message text content
@@ -117,9 +118,11 @@ export function useOllamaRuntime() {
       const ollamaMessages: OllamaMessages = convertToOllamaMessages(messages);
 
       // Prepend system message as first element
+      // Get system prompt from settings store
+      const systemPrompt = useSettingsStore.getState().systemPrompt;
       const systemMessage: OllamaMsg = {
         role: "system",
-        content: "You are a helpful assistance.",
+        content: systemPrompt,
       };
 
       const messagesWithSystem: OllamaMessages = [systemMessage, ...ollamaMessages];
