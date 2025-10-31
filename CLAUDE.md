@@ -11,7 +11,8 @@ Next.js chat application using `assistant-ui` library with local LLM integration
 - **UI Library:** `@assistant-ui/react` v0.11.28 - Chat interface components
 - **AI Integration:** `ollama/browser` - Direct browser-to-Ollama API calls
 - **State:** Zustand with localStorage persistence
-- **UI Components:** Radix UI + Tailwind CSS (light theme)
+- **UI Components:** Radix UI + Tailwind CSS with dark mode support
+- **Theme Management:** `next-themes` - System/Light/Dark mode switching
 - **Fonts:** Local Geist fonts (no CDN dependencies)
 
 ### Deployment Model
@@ -46,8 +47,9 @@ The production build uses nginx reverse proxy to avoid CORS issues.
 - ✅ Thread persistence with conversation history
 - ✅ Markdown rendering with syntax highlighting
 - ✅ Multi-thread management in sidebar
-- ✅ Configurable Ollama endpoint via build-time environment variables
-- ✅ **Vision/Image Support** - Upload images with text for vision-capable models
+- ✅ Settings Page - Runtime-configurable Ollama URL and system prompt (persists to localStorage)
+- ✅ Theme/Appearance Selector - System/Light/Dark mode with localStorage persistence
+- ✅ Vision/Image Support - Upload images with text for vision-capable models
 
 ## Project Structure
 
@@ -62,30 +64,37 @@ app/
 │       └── GeistMono-Italic[wght].woff2
 ├── page.tsx                # Entry point
 ├── assistant.tsx           # Main chat component with custom Ollama runtime
+├── settings/
+│   └── page.tsx            # Settings page (Ollama URL & system prompt)
 └── layout.tsx              # Root layout (uses local fonts)
 
 components/
+├── theme-provider.tsx      # next-themes wrapper for dark mode support
 ├── assistant-ui/
 │   ├── thread.tsx          # Main thread UI (messages, composer, actions)
 │   ├── thread-list.tsx     # Thread management (new/archive)
-│   ├── threadlist-sidebar.tsx  # Sidebar wrapper
+│   ├── threadlist-sidebar.tsx  # Sidebar with dropdown menu & dynamic hostname
 │   ├── model-selector.tsx  # Model dropdown (uses ollama/browser)
 │   ├── markdown-text.tsx   # Markdown renderer
 │   ├── shiki-highlighter.tsx   # Syntax highlighting
 │   └── attachment.tsx      # Image attachment UI components
 └── ui/
     ├── select.tsx          # Radix Select wrapper
+    ├── dropdown-menu.tsx   # Dropdown menu (used in sidebar)
+    ├── card.tsx            # Card wrapper (used in settings)
+    ├── textarea.tsx        # Textarea input (used in settings)
     └── [other shadcn components]
 
 lib/
 ├── ollama-client.ts        # Ollama browser client (direct API calls)
-├── ollama-runtime.ts       # Custom runtime adapter for assistant-ui (with vision support)
+├── ollama-runtime.ts       # Custom runtime adapter (vision support + dynamic system prompt)
 ├── vision-image-adapter.ts # Attachment adapter for vision-capable models
 └── stores/
-    └── model-store.ts      # Zustand store for selected model
+    ├── model-store.ts      # Zustand store for selected model
+    └── settings-store.ts   # Zustand store for Ollama URL, system prompt, and appearance
 
-.env.development                  # Dev: http://localhost:11434
-.env.production             # Prod: http://10.6.135.213:80
+.env.development            # Dev: http://localhost:11434
+.env.production             # Prod: http://10.6.34.95/radchat/api/ollama
 .env.example                # Documentation for environment variables
 ```
 
@@ -129,32 +138,6 @@ These are **build-time** variables that get embedded into the static bundle duri
 
 **File:** `/lib/ollama-runtime.ts`
 
-```typescript
-import { useLocalRuntime } from "@assistant-ui/react";
-import type { ChatModelAdapter } from "@assistant-ui/react";
-import { ollamaClient } from "./ollama-client";
-
-export function useOllamaRuntime() {
-  const adapter: ChatModelAdapter = {
-    async *run({ messages, abortSignal }) {
-      const model = useModelStore.getState().selectedModel;
-
-      const response = await ollamaClient.chat({
-        model,
-        messages: /* converted messages */,
-        stream: true,
-      });
-
-      for await (const chunk of response) {
-        yield { type: "text-delta", textDelta: chunk.message.content };
-      }
-    },
-  };
-
-  return useLocalRuntime(adapter);
-}
-```
-
 - Custom adapter integrates `ollama/browser` with `assistant-ui`
 - Streams responses directly from Ollama
 - Reads current model from Zustand store dynamically
@@ -193,78 +176,9 @@ The application supports sending images to vision-capable LLMs (like llava, llam
 
 **File:** `/lib/vision-image-adapter.ts`
 
-```typescript
-import type { AttachmentAdapter } from "@assistant-ui/react";
-
-export class VisionImageAdapter implements AttachmentAdapter {
-  accept = "image/jpeg,image/png,image/webp,image/gif";
-
-  async add({ file }: { file: File }) {
-    // Validate file size (20MB limit)
-    const maxSize = 20 * 1024 * 1024;
-    if (file.size > maxSize) {
-      throw new Error("Image size exceeds 20MB limit");
-    }
-
-    return {
-      id: this.generateUUID(), // Uses fallback for HTTP contexts
-      type: "image",
-      name: file.name,
-      contentType: file.type,
-      file,
-      status: { type: "running", reason: "uploading", progress: 0 },
-    };
-  }
-
-  async send(attachment: PendingAttachment) {
-    // Convert File to base64 data URL
-    const base64 = await this.fileToBase64DataURL(attachment.file);
-
-    return {
-      ...attachment,
-      content: [{ type: "image", image: base64 }],
-      status: { type: "complete" },
-    };
-  }
-
-  // UUID generation with fallback for insecure contexts (HTTP)
-  private generateUUID(): string {
-    if (typeof crypto !== "undefined" && crypto.randomUUID) {
-      return crypto.randomUUID(); // HTTPS or localhost
-    }
-    // Fallback for HTTP (hospital deployment)
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-      const r = (Math.random() * 16) | 0;
-      const v = c === "x" ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    });
-  }
-}
-```
-
 **File:** `/lib/ollama-runtime.ts`
 
-The runtime extracts images from `msg.attachments` (not `msg.content`) and strips the data URL prefix before sending to Ollama:
-
-```typescript
-// Extract images from attachments
-const attachments = (msg.attachments || []) as MessageAttachment[];
-const imageContent = attachments
-  .filter((att) => att.type === "image" && att.content)
-  .flatMap((att) =>
-    att.content
-      .filter((c) => c.type === "image" && c.image)
-      .map((c) => {
-        // Strip "data:image/jpeg;base64," prefix for Ollama
-        return c.image.split(",")[1];
-      })
-  );
-
-// Add to Ollama message
-if (imageContent.length > 0) {
-  ollamaMsg.images = imageContent; // Array of base64 strings
-}
-```
+The runtime extracts images from `msg.attachments` (not `msg.content`) and strips the data URL prefix before sending to Ollama.
 
 ### Key Points
 
@@ -274,14 +188,6 @@ if (imageContent.length > 0) {
 4. **Vision Models Required:** Regular models ignore images; use llava, llama3.2-vision, etc.
 5. **Multi-Image Support:** Can send multiple images per message
 6. **HTTP Compatibility:** Uses UUID fallback for insecure contexts (hospital HTTP deployment works)
-
-### Supported Models
-
-Vision-capable models that work with images:
-- `llava` (7B) - Fast, good for testing
-- `llava:13b` / `llava:34b` - Better quality
-- `llama3.2-vision` (11B) - Meta's latest
-- `bakllava` - Alternative option
 
 ### UI Components
 
@@ -302,26 +208,80 @@ Provides:
 4. Type your message
 5. Send - model will analyze image and respond
 
+## Settings Page
+
+### Overview
+
+The application includes a settings page accessible via dropdown menu in the sidebar footer. Settings are stored in localStorage and persist across sessions.
+
+### Implementation
+
+**File:** `/app/settings/page.tsx`
+
+Client-side page with two cards:
+
+**Ollama Card:**
+- **Ollama Host URL field:** Editable input that allows runtime override of build-time default
+- **System Prompt textarea:** Customizable system prompt applied to all conversations
+- **Save button:** Persists changes to localStorage (disabled when no changes)
+
+**App Card:**
+- **Appearance selector:** System/Light/Dark theme options
+- **Save button:** Applies theme change immediately
+- **Success feedback:** Shows confirmation message after saving
+
+**File:** `/lib/stores/settings-store.ts`
+
+Zustand store with localStorage persistence:
+```typescript
+interface SettingsStore {
+  ollamaHostUrl: string;        // Default: OLLAMA_BASE_URL from build config
+  systemPrompt: string;         // Default: "You are a helpful assistance."
+  appearance: "system" | "light" | "dark";  // Default: "system"
+  setOllamaHostUrl: (url: string) => void;
+  setSystemPrompt: (prompt: string) => void;
+  setAppearance: (appearance) => void;
+}
+```
+
+**File:** `/lib/ollama-runtime.ts`
+
+Runtime reads system prompt dynamically from settings store:
+```typescript
+// Get system prompt from settings store
+const systemPrompt = useSettingsStore.getState().systemPrompt;
+const systemMessage: OllamaMsg = {
+  role: "system",
+  content: systemPrompt,
+};
+```
+
+### Sidebar Integration
+
+**File:** `/components/assistant-ui/threadlist-sidebar.tsx`
+
+Sidebar footer features:
+- **Dropdown menu trigger:** Shows "Ollama Assistant" + dynamic hostname (extracted from `ollamaHostUrl`)
+- **Menu items:**
+  - Settings → navigates to `/settings` page
+  - Learn more → commented out for future use
+- **Dynamic hostname display:**
+  - `http://localhost:11434` → shows "localhost"
+  - `http://10.6.34.95/radchat/api/ollama` → shows "10.6.34.95"
+
+### Key Features
+
+- ✅ Settings persist across browser sessions (localStorage)
+- ✅ System prompt changes apply immediately to new conversations
+- ✅ Ollama Host URL changes require page reload (client initialized at module load)
+- ✅ Theme changes apply immediately when saved (System/Light/Dark)
+- ✅ Works in both localhost and hospital deployment (static export with `/settings/` route)
+
 ## Build and Deployment
 
 ### npm Scripts
 
-```bash
-# Development with hot reload
-npm run dev
-
-# Build for local testing (localhost:11434)
-npm run build:localhost
-
-# Build for production deployment (hospital IP)
-npm run build:prod
-
-# Serve static build locally
-npm run serve
-
-# Clean build artifacts
-npm run clean
-```
+See `package.json`
 
 ### Building for Production
 
@@ -354,19 +314,6 @@ const nextConfig: NextConfig = {
 **basePath behavior:**
 - Localhost build: `''` (root path) for easier local testing
 - Hospital build: `'/radchat'` for subpath deployment at `http://10.6.34.95/radchat`
-
-### Local Testing
-
-```bash
-# Option 1: Python HTTP server
-cd out
-python3 -m http.server 8000
-
-# Option 2: npx serve
-npx serve out
-
-# Open: http://localhost:8000
-```
 
 ### GitHub Actions Workflows
 
@@ -431,12 +378,19 @@ Two separate workflows for automated builds:
    - Must use absolute URL with full path including basePath for correct routing
    - Fallback model: "gemma3:latest" (if selected model not available)
 
-5. **Offline Deployment:**
+5. **Settings & Runtime Configuration:**
+   - Settings page at `/settings` works in both localhost and hospital deployment
+   - Ollama Host URL can be changed at runtime but requires page reload to take effect
+   - System prompt changes apply immediately to new conversations
+   - All settings persist to localStorage across browser sessions
+   - **Important:** `ollamaClient` is instantiated once at module load, so URL changes need reload
+
+6. **Offline Deployment:**
    - No internet connection required
    - All assets bundled (fonts, CSS, JS)
    - Only needs HTTP server + Ollama server on local network
 
-6. **TypeScript Adapter Types:**
+7. **TypeScript Adapter Types:**
    - `ChatModelAdapter` from assistant-ui expects `content` array with `TextMessagePart`
    - Must accumulate streaming text and yield complete content array
    - Cannot use simple delta streaming (type incompatibility)
@@ -447,13 +401,10 @@ Key dependencies:
 - `@assistant-ui/react` v0.11.28 - Chat UI framework
 - `ollama` v0.6.0 - Ollama client (browser mode: `ollama/browser`)
 - `zustand` v5.0.8 - State management
+- `next-themes` - Theme management (System/Light/Dark mode)
 - `next` v15.5.4 - Framework (static export mode)
 - Local fonts (Geist, GeistMono) - No CDN
 
-**Removed dependencies** (from previous API route implementation):
-- ❌ `@assistant-ui/react-ai-sdk` - No longer needed
-- ❌ `ollama-ai-provider-v2` - Replaced by `ollama/browser`
-- ❌ `ai` (Vercel AI SDK) - Not needed for browser client
 
 ## Implementation Status
 
@@ -504,19 +455,42 @@ All phases completed successfully. The CSR/SPA static export is fully functional
    - Removed unused italic font variants from preload
    - Zero Chrome DevTools console warnings
 
+8. **Settings Page & Runtime Configuration** ✅
+   - Created `/settings` page with Ollama URL and system prompt configuration
+   - Implemented settings-store.ts with localStorage persistence
+   - Runtime-editable Ollama Host URL (overrides build-time default)
+   - Runtime-editable system prompt (applies to all conversations)
+   - Dropdown menu in sidebar footer for accessing settings
+   - Dynamic hostname display in sidebar (extracts from ollamaHostUrl)
+   - Settings persist across browser sessions
+
+9. **Theme/Appearance Support** ✅
+   - Integrated next-themes for dark mode support
+   - Created ThemeProvider component wrapping app
+   - Added appearance selector in settings page (System/Light/Dark)
+   - Theme changes apply immediately when saved
+   - Full dark mode CSS already implemented in globals.css
+   - Theme preference persists to localStorage
+
 ### Testing Checklist:
 
 - ✅ Build completes without errors
-- ✅ Static files exported to `/out`
+- ✅ Static files exported to `/out` (including `/settings/index.html`)
 - ✅ Local HTTP server serves app correctly
 - ✅ Model list loads from Ollama
 - ✅ Chat streaming works
 - ✅ Model switching preserves threads
 - ✅ Works offline (no internet required)
 - ✅ Image upload with vision models works
+- ✅ Settings page accessible at `/settings` route
+- ✅ Settings persist to localStorage
+- ✅ Dynamic hostname displays in sidebar
+- ✅ System prompt changes apply to new conversations
+- ✅ Theme switching works (System/Light/Dark)
+- ✅ Theme persists across page reloads
 - ✅ Zero browser console warnings
 
-8. **Hospital Deployment with Nginx Proxy** ✅
+10. **Hospital Deployment with Nginx Proxy** ✅
    - Implemented nginx reverse proxy configuration
    - Production build uses absolute URL `http://10.6.34.95/radchat/api/ollama` (includes basePath)
    - Eliminates CORS issues for hospital deployment (same-origin requests)
@@ -527,67 +501,12 @@ All phases completed successfully. The CSR/SPA static export is fully functional
 
 **Production deployment at:** `http://10.6.34.95/radchat`
 
-The hospital production build uses nginx reverse proxy to avoid CORS issues.
+The hospital production build uses nginx reverse proxy to avoid CORS issues:
+- Ollama server at `10.6.135.213:80`
+- Nginx proxies `/radchat/api/ollama/` to Ollama server
+- Static files served from `/home/ubuntu/radchat`
+- Settings page works at `/radchat/settings` (served from `/home/ubuntu/radchat/settings/index.html`)
 
-**Ollama Server Configuration (10.6.135.213):**
-```bash
-sudo snap set ollama origins="*"
-```
-
-**Nginx Configuration (Location: `/etc/nginx/nginx.conf`):**
-```nginx
-# Proxy Ollama API requests to the Ollama server
-location /radchat/api/ollama/api/chat {
-    # Proxy to Ollama server at 10.6.135.213:80
-    proxy_pass http://10.6.135.213/api/chat;
-
-    # Essential for streaming responses
-    proxy_buffering off;
-    proxy_cache off;
-
-    # Headers for proper proxying
-    proxy_set_header Host 10.6.135.213;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-
-    # Support for chunked transfer encoding (streaming)
-    chunked_transfer_encoding on;
-    proxy_http_version 1.1;
-    proxy_set_header Connection "";
-
-    # Timeouts for long-running requests
-    proxy_connect_timeout 300s;
-    proxy_send_timeout 300s;
-    proxy_read_timeout 300s;
-}
-
-location /radchat/api/ollama/api/tags {
-    proxy_pass http://10.6.135.213/api/tags;
-
-    # Add the same headers here too
-    proxy_set_header Host 10.6.135.213;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-
-# Serve static Next.js app at /radchat
-location /radchat {
-    alias /home/ubuntu/radchat;
-
-    # Try to serve file directly, then directory, then .html, or 404
-    try_files $uri $uri/ $uri.html =404;
-
-    # Serve index.html by default
-    index index.html;
-
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
-```
-
-**See `DEPLOYMENT.md` for complete deployment instructions for hospital IT team.**
+**For complete deployment configuration, see:**
+- `DEPLOYMENT.md` - Full deployment instructions for hospital IT team
+- `_docs/server-config.md` - Nginx and Ollama server configuration details

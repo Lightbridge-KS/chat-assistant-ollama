@@ -1,5 +1,7 @@
+"use client";
+
 import * as React from "react";
-import { Github, MessagesSquare } from "lucide-react";
+import { MessagesSquare, Settings, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import {
   Sidebar,
@@ -11,11 +13,33 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
+import { useSettingsStore } from "@/lib/stores/settings-store";
 
 export function ThreadListSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
+  // Get Ollama host URL from settings store
+  const ollamaHostUrl = useSettingsStore((state) => state.ollamaHostUrl);
+
+  // Extract hostname from URL
+  const getHostnameFromUrl = (url: string): string => {
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.hostname; // "localhost" or "10.6.34.95"
+    } catch {
+      return "localhost"; // Fallback if URL is invalid
+    }
+  };
+
+  const hostname = getHostnameFromUrl(ollamaHostUrl);
+
   return (
     <Sidebar {...props}>
       <SidebarHeader className="aui-sidebar-header mb-2 border-b">
@@ -49,22 +73,38 @@ export function ThreadListSidebar({
       <SidebarFooter className="aui-sidebar-footer border-t">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link
-                href="https://github.com/Lightbridge-KS/chat-assistant-ollama"
-                target="_blank"
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+                  <div className="aui-sidebar-footer-icon-wrapper flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                    <MessagesSquare className="aui-sidebar-footer-icon size-4" />
+                  </div>
+                  <div className="aui-sidebar-footer-heading flex flex-col gap-0.5 leading-none">
+                    <span className="aui-sidebar-footer-title font-semibold">
+                      Ollama Assistant
+                    </span>
+                    <span className="text-xs">{hostname}</span>
+                  </div>
+                  <ChevronUp className="ml-auto size-4" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="top"
+                align="end"
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
               >
-                <div className="aui-sidebar-footer-icon-wrapper flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Github className="aui-sidebar-footer-icon size-4" />
-                </div>
-                <div className="aui-sidebar-footer-heading flex flex-col gap-0.5 leading-none">
-                  <span className="aui-sidebar-footer-title font-semibold">
-                    GitHub
-                  </span>
-                  <span>View Source</span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings" className="cursor-pointer">
+                    <Settings />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+                {/* <DropdownMenuItem>
+                  <Info />
+                  Learn more
+                </DropdownMenuItem> */}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
