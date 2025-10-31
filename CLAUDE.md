@@ -11,7 +11,8 @@ Next.js chat application using `assistant-ui` library with local LLM integration
 - **UI Library:** `@assistant-ui/react` v0.11.28 - Chat interface components
 - **AI Integration:** `ollama/browser` - Direct browser-to-Ollama API calls
 - **State:** Zustand with localStorage persistence
-- **UI Components:** Radix UI + Tailwind CSS (light theme)
+- **UI Components:** Radix UI + Tailwind CSS with dark mode support
+- **Theme Management:** `next-themes` - System/Light/Dark mode switching
 - **Fonts:** Local Geist fonts (no CDN dependencies)
 
 ### Deployment Model
@@ -47,6 +48,7 @@ The production build uses nginx reverse proxy to avoid CORS issues.
 - ✅ Markdown rendering with syntax highlighting
 - ✅ Multi-thread management in sidebar
 - ✅ Settings Page - Runtime-configurable Ollama URL and system prompt (persists to localStorage)
+- ✅ Theme/Appearance Selector - System/Light/Dark mode with localStorage persistence
 - ✅ Vision/Image Support - Upload images with text for vision-capable models
 
 ## Project Structure
@@ -67,6 +69,7 @@ app/
 └── layout.tsx              # Root layout (uses local fonts)
 
 components/
+├── theme-provider.tsx      # next-themes wrapper for dark mode support
 ├── assistant-ui/
 │   ├── thread.tsx          # Main thread UI (messages, composer, actions)
 │   ├── thread-list.tsx     # Thread management (new/archive)
@@ -88,7 +91,7 @@ lib/
 ├── vision-image-adapter.ts # Attachment adapter for vision-capable models
 └── stores/
     ├── model-store.ts      # Zustand store for selected model
-    └── settings-store.ts   # Zustand store for Ollama URL & system prompt
+    └── settings-store.ts   # Zustand store for Ollama URL, system prompt, and appearance
 
 .env.development            # Dev: http://localhost:11434
 .env.production             # Prod: http://10.6.34.95/radchat/api/ollama
@@ -215,10 +218,16 @@ The application includes a settings page accessible via dropdown menu in the sid
 
 **File:** `/app/settings/page.tsx`
 
-Client-side page with:
+Client-side page with two cards:
+
+**Ollama Card:**
 - **Ollama Host URL field:** Editable input that allows runtime override of build-time default
 - **System Prompt textarea:** Customizable system prompt applied to all conversations
 - **Save button:** Persists changes to localStorage (disabled when no changes)
+
+**App Card:**
+- **Appearance selector:** System/Light/Dark theme options
+- **Save button:** Applies theme change immediately
 - **Success feedback:** Shows confirmation message after saving
 
 **File:** `/lib/stores/settings-store.ts`
@@ -228,8 +237,10 @@ Zustand store with localStorage persistence:
 interface SettingsStore {
   ollamaHostUrl: string;        // Default: OLLAMA_BASE_URL from build config
   systemPrompt: string;         // Default: "You are a helpful assistance."
+  appearance: "system" | "light" | "dark";  // Default: "system"
   setOllamaHostUrl: (url: string) => void;
   setSystemPrompt: (prompt: string) => void;
+  setAppearance: (appearance) => void;
 }
 ```
 
@@ -263,6 +274,7 @@ Sidebar footer features:
 - ✅ Settings persist across browser sessions (localStorage)
 - ✅ System prompt changes apply immediately to new conversations
 - ✅ Ollama Host URL changes require page reload (client initialized at module load)
+- ✅ Theme changes apply immediately when saved (System/Light/Dark)
 - ✅ Works in both localhost and hospital deployment (static export with `/settings/` route)
 
 ## Build and Deployment
@@ -389,6 +401,7 @@ Key dependencies:
 - `@assistant-ui/react` v0.11.28 - Chat UI framework
 - `ollama` v0.6.0 - Ollama client (browser mode: `ollama/browser`)
 - `zustand` v5.0.8 - State management
+- `next-themes` - Theme management (System/Light/Dark mode)
 - `next` v15.5.4 - Framework (static export mode)
 - Local fonts (Geist, GeistMono) - No CDN
 
@@ -451,6 +464,14 @@ All phases completed successfully. The CSR/SPA static export is fully functional
    - Dynamic hostname display in sidebar (extracts from ollamaHostUrl)
    - Settings persist across browser sessions
 
+9. **Theme/Appearance Support** ✅
+   - Integrated next-themes for dark mode support
+   - Created ThemeProvider component wrapping app
+   - Added appearance selector in settings page (System/Light/Dark)
+   - Theme changes apply immediately when saved
+   - Full dark mode CSS already implemented in globals.css
+   - Theme preference persists to localStorage
+
 ### Testing Checklist:
 
 - ✅ Build completes without errors
@@ -465,9 +486,11 @@ All phases completed successfully. The CSR/SPA static export is fully functional
 - ✅ Settings persist to localStorage
 - ✅ Dynamic hostname displays in sidebar
 - ✅ System prompt changes apply to new conversations
+- ✅ Theme switching works (System/Light/Dark)
+- ✅ Theme persists across page reloads
 - ✅ Zero browser console warnings
 
-8. **Hospital Deployment with Nginx Proxy** ✅
+10. **Hospital Deployment with Nginx Proxy** ✅
    - Implemented nginx reverse proxy configuration
    - Production build uses absolute URL `http://10.6.34.95/radchat/api/ollama` (includes basePath)
    - Eliminates CORS issues for hospital deployment (same-origin requests)

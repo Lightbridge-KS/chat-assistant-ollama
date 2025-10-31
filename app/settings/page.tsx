@@ -8,33 +8,70 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { OLLAMA_BASE_URL } from "@/lib/ollama-client";
+import { useTheme } from "next-themes";
 
 export default function SettingsPage() {
   // Get current settings from store
-  const { ollamaHostUrl, systemPrompt, setOllamaHostUrl, setSystemPrompt } =
-    useSettingsStore();
+  const {
+    ollamaHostUrl,
+    systemPrompt,
+    appearance,
+    setOllamaHostUrl,
+    setSystemPrompt,
+    setAppearance,
+  } = useSettingsStore();
 
-  // Local form state (draft until saved)
+  // Get theme setter from next-themes
+  const { setTheme } = useTheme();
+
+  // Local form state for Ollama settings (draft until saved)
   const [draftUrl, setDraftUrl] = useState(ollamaHostUrl);
   const [draftPrompt, setDraftPrompt] = useState(systemPrompt);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isOllamaSaved, setIsOllamaSaved] = useState(false);
 
-  // Handle save button
-  const handleSave = () => {
+  // Local form state for App settings (draft until saved)
+  const [draftAppearance, setDraftAppearance] = useState(appearance);
+  const [isAppSaved, setIsAppSaved] = useState(false);
+
+  // Handle save button for Ollama settings
+  const handleSaveOllama = () => {
     setOllamaHostUrl(draftUrl);
     setSystemPrompt(draftPrompt);
-    setIsSaved(true);
+    setIsOllamaSaved(true);
 
     // Clear success message after 3 seconds
     setTimeout(() => {
-      setIsSaved(false);
+      setIsOllamaSaved(false);
     }, 3000);
   };
 
-  // Check if changes were made
-  const hasChanges = draftUrl !== ollamaHostUrl || draftPrompt !== systemPrompt;
+  // Handle save button for App settings
+  const handleSaveApp = () => {
+    setAppearance(draftAppearance);
+    setTheme(draftAppearance); // Apply theme immediately
+    setIsAppSaved(true);
+
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      setIsAppSaved(false);
+    }, 3000);
+  };
+
+  // Check if changes were made for Ollama settings
+  const hasOllamaChanges =
+    draftUrl !== ollamaHostUrl || draftPrompt !== systemPrompt;
+
+  // Check if changes were made for App settings
+  const hasAppChanges = draftAppearance !== appearance;
 
   return (
     <div className="flex h-screen flex-col">
@@ -52,7 +89,7 @@ export default function SettingsPage() {
       </header>
 
       <main className="flex-1 overflow-auto px-6 py-8">
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto max-w-4xl space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Ollama</CardTitle>
@@ -89,10 +126,54 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <Button onClick={handleSave} disabled={!hasChanges}>
+                <Button onClick={handleSaveOllama} disabled={!hasOllamaChanges}>
                   Save Settings
                 </Button>
-                {isSaved && (
+                {isOllamaSaved && (
+                  <span className="text-sm text-green-600 dark:text-green-500">
+                    Settings saved successfully!
+                  </span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>App</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="appearance">
+                    Appearance
+                  </Label>
+                  <Select
+                    value={draftAppearance}
+                    onValueChange={(value) =>
+                      setDraftAppearance(value as "system" | "light" | "dark")
+                    }
+                  >
+                    <SelectTrigger id="appearance" className="w-30">
+                      <SelectValue placeholder="Select theme" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="system">System</SelectItem>
+                      <SelectItem value="light">Light</SelectItem>
+                      <SelectItem value="dark">Dark</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Choose how the app looks.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button onClick={handleSaveApp} disabled={!hasAppChanges}>
+                  Save Settings
+                </Button>
+                {isAppSaved && (
                   <span className="text-sm text-green-600 dark:text-green-500">
                     Settings saved successfully!
                   </span>
