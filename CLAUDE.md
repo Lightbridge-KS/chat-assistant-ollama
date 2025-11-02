@@ -347,9 +347,15 @@ Sidebar footer features:
 - ✅ Fixed branching - Can reload/edit previous messages to create conversation branches
 - ✅ Fixed first message edit - Handles null parentId correctly
 - ✅ Copy button works (built-in by assistant-ui)
+- ✅ Fixed Next.js SSR localStorage errors - Added browser environment checks
+- ✅ Deleted old persistence files (5 files) - Cleaned up legacy event-driven code
+- ✅ Fixed ModelSelector auto-select race condition - Prevents overwriting persisted models
 
-**Known Issues:**
-- ⚠️ Model sync on active thread needs refinement (works on non-active threads)
+**Known Issues (Minor):**
+- ⚠️ Model sync on active thread after page reload - Model reverts to first in list
+  - **Workaround:** Works correctly for non-active threads
+  - **Impact:** Low - Only affects active thread on page reload
+  - **Status:** Can be fixed later
 
 ## Build and Deployment
 

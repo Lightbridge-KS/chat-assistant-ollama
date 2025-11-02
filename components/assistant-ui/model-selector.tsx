@@ -39,14 +39,20 @@ export function ModelSelector() {
 
         setModels(modelList);
 
-        // Auto-select first model if no model is selected or selected model doesn't exist
-        if (modelList.length > 0) {
+        // Auto-select first model only if truly needed
+        if (modelList.length > 0 && !selectedModel) {
+          // No model selected → auto-select first
+          setSelectedModel(modelList[0].name);
+        } else if (modelList.length > 0 && selectedModel) {
+          // Validate persisted model exists in fetched list
           const modelExists = modelList.some(
             (m: OllamaModel) => m.name === selectedModel
           );
-          if (!selectedModel || !modelExists) {
+          if (!modelExists) {
+            console.warn(`[ModelSelector] Model "${selectedModel}" not found, using first available model`);
             setSelectedModel(modelList[0].name);
           }
+          // else: Keep existing selectedModel (it's valid and persisted!)
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -56,7 +62,10 @@ export function ModelSelector() {
     };
 
     fetchModels();
-  }, [selectedModel, setSelectedModel]);
+    // CRITICAL: Only run once on mount, don't re-fetch when selectedModel changes
+    // This prevents overwriting persisted model before list loads
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (isLoading) {
     return <Skeleton className="h-10 w-[180px]" />;
