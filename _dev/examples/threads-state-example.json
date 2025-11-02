@@ -1,0 +1,153 @@
+{
+  "mainThreadId": "__LOCALID_dLmdqJ7",
+  "newThreadId": null,
+  "isLoading": false,
+  "threadIds": [
+    "__LOCALID_dLmdqJ7",
+    "__LOCALID_VrUXDKy"
+  ],
+  "archivedThreadIds": [
+    "__LOCALID_LNgmHQk"
+  ],
+  "threadItems": [
+    {
+      "id": "__LOCALID_LNgmHQk",
+      "threadId": "__LOCALID_LNgmHQk",
+      "remoteId": "__LOCALID_LNgmHQk",
+      "status": "archived",
+      "isMain": false
+    },
+    {
+      "id": "__LOCALID_VrUXDKy",
+      "threadId": "__LOCALID_VrUXDKy",
+      "remoteId": "__LOCALID_VrUXDKy",
+      "status": "regular",
+      "isMain": false
+    },
+    {
+      "id": "__LOCALID_dLmdqJ7",
+      "threadId": "__LOCALID_dLmdqJ7",
+      "remoteId": "__LOCALID_dLmdqJ7",
+      "status": "regular",
+      "isMain": true
+    }
+  ],
+  "main": {
+    "isDisabled": false,
+    "isLoading": false,
+    "isRunning": false,
+    "capabilities": {
+      "switchToBranch": true,
+      "switchBranchDuringRun": true,
+      "edit": true,
+      "reload": true,
+      "cancel": true,
+      "unstable_copy": true,
+      "speech": false,
+      "attachments": true,
+      "feedback": false
+    },
+    "state": null,
+    "suggestions": [],
+    "composer": {
+      "text": "",
+      "role": "user",
+      "attachments": [],
+      "runConfig": {},
+      "isEditing": true,
+      "canCancel": true,
+      "attachmentAccept": "image/jpeg,image/png,image/webp,image/gif",
+      "isEmpty": true,
+      "type": "thread"
+    },
+    "messages": [
+      {
+        "id": "7hQKO6O",
+        "createdAt": "2025-11-02T13:36:37.447Z",
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "Meow"
+          }
+        ],
+        "attachments": [],
+        "metadata": {
+          "custom": {}
+        },
+        "isLast": false,
+        "parentId": null,
+        "branchNumber": 1,
+        "branchCount": 1,
+        "parts": [
+          {
+            "type": "text",
+            "text": "Meow",
+            "status": {
+              "type": "complete"
+            }
+          }
+        ],
+        "composer": {
+          "text": "",
+          "role": "user",
+          "attachments": [],
+          "runConfig": {},
+          "isEditing": false,
+          "canCancel": false,
+          "attachmentAccept": "",
+          "isEmpty": true,
+          "type": "edit"
+        },
+        "isCopied": false,
+        "isHovering": false
+      },
+      {
+        "id": "s7w3agS",
+        "role": "assistant",
+        "status": {
+          "type": "complete",
+          "reason": "unknown"
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Purrrr! It’s nice to hear from a fellow feline enthusiast! Is there anything you’d like to chat about? 😊 \n\nDo you just feel like saying “meow,” or were you thinking of something specific?"
+          }
+        ],
+        "metadata": {
+          "unstable_state": null,
+          "unstable_annotations": [],
+          "unstable_data": [],
+          "steps": [],
+          "custom": {}
+        },
+        "createdAt": "2025-11-02T13:36:37.448Z",
+        "isLast": true,
+        "parentId": "7hQKO6O",
+        "branchNumber": 1,
+        "branchCount": 1,
+        "parts": [
+          {
+            "type": "text",
+            "text": "Purrrr! It’s nice to hear from a fellow feline enthusiast! Is there anything you’d like to chat about? 😊 \n\nDo you just feel like saying “meow,” or were you thinking of something specific?",
+            "status": "[Circular]"
+          }
+        ],
+        "composer": {
+          "text": "",
+          "role": "user",
+          "attachments": [],
+          "runConfig": "[Circular]",
+          "isEditing": false,
+          "canCancel": false,
+          "attachmentAccept": "",
+          "isEmpty": true,
+          "type": "edit"
+        },
+        "isCopied": false,
+        "isHovering": false
+      }
+    ]
+  }
+}

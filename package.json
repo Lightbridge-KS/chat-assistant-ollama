@@ -38,6 +38,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.22",
+    "immer": "^10.2.0",
+    "localforage": "^1.10.0",
     "lucide-react": "^0.545.0",
     "motion": "^12.23.22",
     "next": "15.5.4",
