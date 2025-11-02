@@ -1,6 +1,6 @@
 "use client";
 
-import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { DevToolsModal } from "@assistant-ui/react-devtools";
 import { Thread } from "@/components/assistant-ui/thread";
 import {
   SidebarInset,
@@ -12,21 +12,16 @@ import { Separator } from "@/components/ui/separator";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { ModelSelector } from "@/components/assistant-ui/model-selector";
 import { useModelStore } from "@/lib/stores/model-store";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useOllamaRuntime } from "@/lib/ollama-runtime";
+import { OllamaRuntimeProvider } from "@/lib/ollama-external-runtime";
 
 export const Assistant = () => {
   const selectedModel = useModelStore((state) => state.selectedModel);
-
-  // Use custom Ollama runtime for static SPA
-  const runtime = useOllamaRuntime();
 
   // Wait for model to be selected before rendering thread
   if (!selectedModel) {
@@ -42,7 +37,10 @@ export const Assistant = () => {
   }
 
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
+    <OllamaRuntimeProvider>
+      {/* Devtool for Assistant-UI */}
+      <DevToolsModal />
+      {/* No PersistenceManager needed - automatic with Zustand persist! */}
       <SidebarProvider>
         <div className="flex h-dvh w-full pr-0.5">
           <ThreadListSidebar />
@@ -77,6 +75,6 @@ export const Assistant = () => {
           </SidebarInset>
         </div>
       </SidebarProvider>
-    </AssistantRuntimeProvider>
+    </OllamaRuntimeProvider>
   );
 };

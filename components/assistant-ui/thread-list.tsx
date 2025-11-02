@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Skeleton } from "@/components/ui/skeleton";
 
+//  🗂️  ThreadList (threads) - Manages the list of conversations
 export const ThreadList: FC = () => {
   return (
     <ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col items-stretch gap-1.5">
@@ -33,6 +34,7 @@ const ThreadListNew: FC = () => {
   );
 };
 
+// 📄 ThreadListItem (threadListItem) - Individual thread in the list
 const ThreadListItems: FC = () => {
   const isLoading = useAssistantState(({ threads }) => threads.isLoading);
 

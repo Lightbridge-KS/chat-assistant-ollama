@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,11 @@ import {
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { OLLAMA_BASE_URL } from "@/lib/ollama-client";
 import { useTheme } from "next-themes";
+import {
+  useChatStore,
+  getChatStorageStats,
+  exportChatData,
+} from "@/lib/stores/chat-store";
 
 export default function SettingsPage() {
   // Get current settings from store
@@ -41,6 +46,17 @@ export default function SettingsPage() {
   // Local form state for App settings (draft until saved)
   const [draftAppearance, setDraftAppearance] = useState(appearance);
   const [isAppSaved, setIsAppSaved] = useState(false);
+
+  // Storage stats state
+  const [storageStats, setStorageStats] = useState({
+    usedMB: 0,
+    limitMB: 5,
+    usagePercent: 0,
+    threadCount: 0,
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Handle save button for Ollama settings
   const handleSaveOllama = () => {
@@ -72,6 +88,53 @@ export default function SettingsPage() {
 
   // Check if changes were made for App settings
   const hasAppChanges = draftAppearance !== appearance;
+
+  // Load storage stats on mount and when chat store changes
+  useEffect(() => {
+    const stats = getChatStorageStats();
+    setStorageStats(stats);
+  }, []);
+
+  // Handle export conversations
+  const handleExport = () => {
+    setIsExporting(true);
+    try {
+      exportChatData();
+      // Refresh stats after export (though it shouldn't change stats)
+      setTimeout(() => {
+        setIsExporting(false);
+      }, 1000);
+    } catch (error) {
+      console.error("Export failed:", error);
+      setIsExporting(false);
+    }
+  };
+
+  // Handle delete all conversations
+  const handleDelete = () => {
+    if (!showDeleteConfirm) {
+      setShowDeleteConfirm(true);
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // Clear all threads using chat store
+      useChatStore.getState().clearAllThreads();
+
+      // Refresh stats
+      const stats = getChatStorageStats();
+      setStorageStats(stats);
+      setShowDeleteConfirm(false);
+
+      setTimeout(() => {
+        setIsDeleting(false);
+      }, 500);
+    } catch (error) {
+      console.error("Delete failed:", error);
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="flex h-screen flex-col">
@@ -177,6 +240,90 @@ export default function SettingsPage() {
                   <span className="text-sm text-green-600 dark:text-green-500">
                     Settings saved successfully!
                   </span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Data Management</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Storage Usage</Label>
+                  <span className="text-sm font-mono text-muted-foreground">
+                    {storageStats.usedMB.toFixed(2)} MB / {storageStats.limitMB} MB
+                  </span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${Math.min(storageStats.usagePercent, 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {storageStats.threadCount} conversation{storageStats.threadCount !== 1 ? "s" : ""} saved
+                  {storageStats.usagePercent > 80 && (
+                    <span className="text-orange-600 dark:text-orange-500">
+                      {" "}• Storage almost full
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={handleExport}
+                    disabled={isExporting || storageStats.threadCount === 0}
+                    className="gap-2"
+                  >
+                    <Download className="size-4" />
+                    {isExporting ? "Exporting..." : "Export Data"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Download conversations as JSON backup
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={isDeleting || storageStats.threadCount === 0}
+                    className="gap-2"
+                  >
+                    <Trash2 className="size-4" />
+                    {showDeleteConfirm
+                      ? "Click again to confirm"
+                      : isDeleting
+                        ? "Deleting..."
+                        : "Delete All Conversations"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    {showDeleteConfirm ? (
+                      <span className="text-destructive font-medium">
+                        This will permanently delete all saved conversations
+                      </span>
+                    ) : (
+                      "Clear all saved conversation history"
+                    )}
+                  </p>
+                </div>
+
+                {showDeleteConfirm && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowDeleteConfirm(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 )}
               </div>
             </CardContent>

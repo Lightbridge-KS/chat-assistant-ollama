@@ -86,10 +86,11 @@ components/
     └── [other shadcn components]
 
 lib/
-├── ollama-client.ts        # Ollama browser client (direct API calls)
-├── ollama-runtime.ts       # Custom runtime adapter (vision support + dynamic system prompt)
-├── vision-image-adapter.ts # Attachment adapter for vision-capable models
+├── ollama-client.ts            # Ollama browser client (direct API calls)
+├── ollama-external-runtime.tsx # ExternalStoreRuntime provider with Zustand (NEW - v2)
+├── vision-image-adapter.ts     # Attachment adapter for vision-capable models
 └── stores/
+    ├── chat-store.ts       # Zustand store for conversations with automatic persistence (NEW)
     ├── model-store.ts      # Zustand store for selected model
     └── settings-store.ts   # Zustand store for Ollama URL, system prompt, and appearance
 
@@ -134,13 +135,28 @@ These are **build-time** variables that get embedded into the static bundle duri
 - Configurable endpoint via environment variable
 - Direct HTTP calls to Ollama server (no API routes needed)
 
-### Custom Runtime Adapter
+### Conversation Persistence (ExternalStoreRuntime)
 
-**File:** `/lib/ollama-runtime.ts`
+**File:** `/lib/ollama-external-runtime.tsx`
 
-- Custom adapter integrates `ollama/browser` with `assistant-ui`
+**Architecture:** Uses `useExternalStoreRuntime` pattern backed by Zustand store with automatic localStorage persistence.
+
+- Full conversation restoration across page refreshes
+- Messages, images, and thread metadata persist automatically
+- Model selection persists per-thread
+- True multi-thread support with thread list adapter
 - Streams responses directly from Ollama
-- Reads current model from Zustand store dynamically
+- Integrates with vision-capable models via VisionImageAdapter
+
+**File:** `/lib/stores/chat-store.ts`
+
+Zustand store managing all conversation state:
+- Thread management (create, delete, archive, rename)
+- Message management (add, update, stream)
+- Automatic localStorage sync via persist middleware
+- Migration from old persistence format
+- Storage quota management and cleanup (keep last 10 threads)
+- Export/import functionality
 
 ### Model Selection Implementation
 
@@ -158,13 +174,20 @@ const modelList = response.models.map((m) => ({
 **File:** `/app/assistant.tsx`
 
 ```typescript
-// Uses custom Ollama runtime
-const runtime = useOllamaRuntime();
+// Uses ExternalStoreRuntime provider (v2)
+<OllamaRuntimeProvider>
+  {/* All state managed by Zustand with automatic persistence */}
+  <DevToolsModal />
+  <SidebarProvider>
+    <Thread />
+  </SidebarProvider>
+</OllamaRuntimeProvider>
 ```
 
 - Model selector fetches directly from Ollama API
-- Runtime adapter handles streaming chat
-- No Next.js API routes involved
+- Runtime provider wraps entire app, managing all state
+- Automatic persistence via Zustand middleware
+- No manual save/restore logic needed
 
 ## Vision/Image Support
 
@@ -276,6 +299,63 @@ Sidebar footer features:
 - ✅ Ollama Host URL changes require page reload (client initialized at module load)
 - ✅ Theme changes apply immediately when saved (System/Light/Dark)
 - ✅ Works in both localhost and hospital deployment (static export with `/settings/` route)
+
+## Persistence Architecture (v2 - ExternalStoreRuntime)
+
+### Refactor from Event-Driven to External Store (Jan 2025)
+
+**Previous approach (v1):** Event-driven persistence with manual save/restore
+- Used `useLocalRuntime` with event listeners
+- Manual localStorage writes on message events
+- Required restore dialog and manual message appending
+- Issues: "Parent message not found" errors, partial restoration
+
+**Current approach (v2):** ExternalStoreRuntime with Zustand persist
+- Uses `useExternalStoreRuntime` backed by Zustand
+- Automatic localStorage sync via persist middleware
+- Silent restoration on page load (no dialog)
+- Full conversation context preserved
+
+**Key Changes:**
+1. **New files:**
+   - `lib/ollama-external-runtime.tsx` - Runtime provider
+   - `lib/stores/chat-store.ts` - Conversation state management
+
+2. **Removed files:**
+   - `lib/ollama-runtime.ts` - Old LocalRuntime adapter
+   - `lib/hooks/use-persist-threads.ts` - Event-driven persistence
+   - `lib/storage/thread-storage.ts` - Manual storage utils
+   - `components/persistence-manager.tsx` - Restore dialog component
+   - `components/restore-session-dialog.tsx` - Dialog UI
+
+3. **Modified files:**
+   - `app/assistant.tsx` - Now uses OllamaRuntimeProvider
+   - `app/settings/page.tsx` - Updated to use chat-store functions
+
+**Benefits:**
+- ✅ True conversation restoration (assistant remembers context)
+- ✅ Automatic persistence (no manual save logic)
+- ✅ Model persists per-thread
+- ✅ Multi-thread support with thread list adapter
+- ✅ Cleaner codebase (removed 5 files)
+- ✅ Full message editing and regeneration support (onReload, onEdit)
+- ✅ Conversation branching (reload any previous message)
+
+**Recent Fixes (Jan 2025):**
+- ✅ Implemented `onReload` handler - Reload button works on any assistant message
+- ✅ Implemented `onEdit` handler - Edit button works on any user message
+- ✅ Fixed branching - Can reload/edit previous messages to create conversation branches
+- ✅ Fixed first message edit - Handles null parentId correctly
+- ✅ Copy button works (built-in by assistant-ui)
+- ✅ Fixed Next.js SSR localStorage errors - Added browser environment checks
+- ✅ Deleted old persistence files (5 files) - Cleaned up legacy event-driven code
+- ✅ Fixed ModelSelector auto-select race condition - Prevents overwriting persisted models
+
+**Known Issues (Minor):**
+- ⚠️ Model sync on active thread after page reload - Model reverts to first in list
+  - **Workaround:** Works correctly for non-active threads
+  - **Impact:** Low - Only affects active thread on page reload
+  - **Status:** Can be fixed later
 
 ## Build and Deployment
 
