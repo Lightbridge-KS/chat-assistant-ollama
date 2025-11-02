@@ -1,6 +1,7 @@
 "use client";
 
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { DevToolsModal } from "@assistant-ui/react-devtools";
 import { Thread } from "@/components/assistant-ui/thread";
 import {
   SidebarInset,
@@ -43,6 +44,8 @@ export const Assistant = () => {
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
+      {/* Devtool for Assistant-UI */}
+      <DevToolsModal />
       <SidebarProvider>
         <div className="flex h-dvh w-full pr-0.5">
           <ThreadListSidebar />
