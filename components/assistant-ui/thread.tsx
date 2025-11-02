@@ -35,6 +35,7 @@ import {
 
 import { cn } from "@/lib/utils";
 
+// 💬 Thread (thread) - Active conversation with messages
 export const Thread: FC = () => {
   return (
     <LazyMotion features={domAnimation}>
@@ -59,11 +60,17 @@ export const Thread: FC = () => {
             />
 
             <ThreadPrimitive.If empty={false}>
+              <p className="mx-auto w-full max-w-screen-md p-2 text-right text-xs text-muted-foreground/70 dark:text-[#b8b5a9]">
+              Ollama Assistant can make mistakes. Please double-check responses.
+              </p>
               <div className="aui-thread-viewport-spacer min-h-8 grow" />
             </ThreadPrimitive.If>
 
             <Composer />
           </ThreadPrimitive.Viewport>
+            <p className="p-2 text-center text-xs text-muted-foreground/70 dark:text-[#b8b5a9]">
+            Chatbot for testing purposes only. Not for production use.
+            </p>
         </ThreadPrimitive.Root>
       </MotionConfig>
     </LazyMotion>
@@ -170,6 +177,7 @@ const ThreadSuggestions: FC = () => {
   );
 };
 
+// ✏️  Composer (composer) - Edit mode for existing messages
 const Composer: FC = () => {
   return (
     <div className="aui-composer-wrapper sticky bottom-0 mx-auto flex w-full max-w-[var(--thread-max-width)] flex-col gap-4 overflow-visible rounded-t-3xl bg-background pb-4 md:pb-6">
