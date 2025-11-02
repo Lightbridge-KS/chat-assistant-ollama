@@ -123,6 +123,11 @@ function generateThreadTitle(messages: ThreadMessageLike[]): string {
  * Migrate data from old event-driven persistence format
  */
 function migrateOldData(): Record<string, ChatThread> | null {
+  // Only run in browser environment
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   try {
     const oldKey = "ollama-threads-storage";
     const oldData = localStorage.getItem(oldKey);
@@ -138,6 +143,7 @@ function migrateOldData(): Record<string, ChatThread> | null {
 
     // Convert old format to new format
     if (parsed.threads) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       Object.entries(parsed.threads).forEach(([id, thread]: [string, any]) => {
         threads[id] = {
           id,
@@ -427,6 +433,17 @@ export function getChatStorageStats(): {
   usagePercent: number;
   threadCount: number;
 } {
+  // Only run in browser environment
+  if (typeof window === "undefined") {
+    return {
+      usedBytes: 0,
+      usedMB: 0,
+      limitMB: 5,
+      usagePercent: 0,
+      threadCount: 0,
+    };
+  }
+
   try {
     const stored = localStorage.getItem("ollama-chat-storage");
     const usedBytes = stored ? new Blob([stored]).size : 0;
@@ -461,6 +478,12 @@ export function getChatStorageStats(): {
  * Export all conversations as JSON file
  */
 export function exportChatData(): void {
+  // Only run in browser environment
+  if (typeof window === "undefined") {
+    console.warn("[ChatStore] exportChatData can only run in browser");
+    return;
+  }
+
   try {
     const state = useChatStore.getState();
 

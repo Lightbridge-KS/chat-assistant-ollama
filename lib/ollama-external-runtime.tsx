@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useCallback, useEffect, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import {
   useExternalStoreRuntime,
   AssistantRuntimeProvider,
@@ -84,6 +84,102 @@ function generateMessageId(): string {
 }
 
 /**
+ * Shared helper to stream Ollama response and update chat store
+ * Used by onNew, onReload, and onEdit handlers
+ */
+async function streamOllamaResponse(
+  messagesToSend: ThreadMessageLike[],
+  chatStore: {
+    addMessage: (message: ThreadMessageLike) => void;
+    updateMessage: (id: string, updates: Partial<ThreadMessageLike>) => void;
+    setIsRunning: (running: boolean) => void;
+  },
+  selectedModel: string,
+  systemPrompt: string
+): Promise<void> {
+  // 1. Create assistant message (optimistic)
+  const assistantId = generateMessageId();
+  const assistantMessage: ThreadMessageLike = {
+    id: assistantId,
+    role: "assistant",
+    content: [{ type: "text", text: "" }],
+    createdAt: new Date(),
+    status: {
+      type: "running",
+    },
+  };
+
+  chatStore.addMessage(assistantMessage);
+  chatStore.setIsRunning(true);
+
+  try {
+    // 2. Prepare messages for Ollama (including system prompt)
+    const systemMessage: OllamaMsg = {
+      role: "system",
+      content: systemPrompt,
+    };
+
+    const ollamaMessages = [
+      systemMessage,
+      ...convertToOllamaMessages(messagesToSend),
+    ];
+
+    console.log("[OllamaRuntime] Sending to Ollama:", {
+      model: selectedModel,
+      messageCount: ollamaMessages.length,
+      hasImages: ollamaMessages.some((m) => m.images && m.images.length > 0),
+    });
+
+    // 3. Stream from Ollama
+    let accumulatedText = "";
+
+    const stream = await ollamaClient.chat({
+      model: selectedModel || "gemma3:latest",
+      messages: ollamaMessages,
+      stream: true,
+    });
+
+    // 4. Update message progressively as chunks arrive
+    for await (const chunk of stream) {
+      const delta = chunk.message.content;
+      accumulatedText += delta;
+
+      chatStore.updateMessage(assistantId, {
+        content: [{ type: "text", text: accumulatedText }],
+      });
+    }
+
+    // 5. Mark as complete
+    chatStore.updateMessage(assistantId, {
+      status: {
+        type: "complete",
+        reason: "stop",
+      },
+    });
+
+    chatStore.setIsRunning(false);
+
+    console.log("[OllamaRuntime] Streaming complete:", {
+      assistantId,
+      textLength: accumulatedText.length,
+    });
+  } catch (error) {
+    console.error("[OllamaRuntime] Error during streaming:", error);
+
+    // Mark as incomplete with error
+    chatStore.setIsRunning(false);
+
+    chatStore.updateMessage(assistantId, {
+      status: {
+        type: "incomplete",
+        reason: "error",
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
+}
+
+/**
  * Provider component that wraps the app with ExternalStoreRuntime
  */
 export function OllamaRuntimeProvider({ children }: { children: ReactNode }) {
@@ -95,17 +191,38 @@ export function OllamaRuntimeProvider({ children }: { children: ReactNode }) {
   // Get current messages from store
   const messages = chatStore.getCurrentMessages();
 
+  // Track initial mount to distinguish from thread switches
+  const isInitialMount = useRef(true);
+
   /**
-   * Sync model-store with current thread's model ONLY on thread switch
-   * This ensures model selector shows correct model when switching threads
+   * Bidirectional model sync between model-store and thread
+   * - Initial mount: model-store → thread (preserve user's last selection)
+   * - Thread switch: thread → model-store (preserve conversation context)
    * IMPORTANT: Only triggers on currentThreadId change, NOT on every render
    */
   useEffect(() => {
     const currentThread = chatStore.getCurrentThread();
-    if (currentThread && currentThread.model) {
-      console.log("[OllamaRuntime] Syncing model from thread:", currentThread.model);
-      setSelectedModel(currentThread.model);
+
+    if (!currentThread) return;
+
+    if (isInitialMount.current) {
+      // On initial mount: model-store wins (user's last selection)
+      if (selectedModel && selectedModel !== currentThread.model) {
+        console.log("[OllamaRuntime] Initial load - updating thread model to match selection:", selectedModel);
+        chatStore.updateThreadModel(chatStore.currentThreadId, selectedModel);
+      } else if (currentThread.model && !selectedModel) {
+        console.log("[OllamaRuntime] Initial load - updating selection to match thread:", currentThread.model);
+        setSelectedModel(currentThread.model);
+      }
+      isInitialMount.current = false;
+    } else {
+      // On thread switch: thread model wins (conversation context)
+      if (currentThread.model && currentThread.model !== selectedModel) {
+        console.log("[OllamaRuntime] Thread switch - syncing model from thread:", currentThread.model);
+        setSelectedModel(currentThread.model);
+      }
     }
+
     // CRITICAL: Only depend on currentThreadId to avoid infinite loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatStore.currentThreadId]);
@@ -115,121 +232,145 @@ export function OllamaRuntimeProvider({ children }: { children: ReactNode }) {
    */
   const onNew = useCallback(
     async (message: AppendMessage) => {
-      try {
-        // 0. Update thread model to current selected model (if changed)
-        const currentThread = chatStore.getCurrentThread();
-        if (currentThread && selectedModel && currentThread.model !== selectedModel) {
-          console.log("[OllamaRuntime] Updating thread model to:", selectedModel);
-          chatStore.updateThreadModel(chatStore.currentThreadId, selectedModel);
-        }
-
-        // 1. Add user message to store
-        const userMessage: ThreadMessageLike = {
-          id: generateMessageId(),
-          role: "user",
-          content: [...message.content], // Convert readonly to mutable
-          attachments: message.attachments ? [...message.attachments] : undefined,
-          createdAt: new Date(),
-        };
-
-        chatStore.addMessage(userMessage);
-
-        console.log("[OllamaRuntime] User message added:", {
-          id: userMessage.id,
-          contentLength: userMessage.content.length,
-          hasAttachments: (userMessage.attachments?.length || 0) > 0,
-        });
-
-        // 2. Create assistant message (optimistic)
-        const assistantId = generateMessageId();
-        const assistantMessage: ThreadMessageLike = {
-          id: assistantId,
-          role: "assistant",
-          content: [{ type: "text", text: "" }],
-          createdAt: new Date(),
-          status: {
-            type: "running",
-          },
-        };
-
-        chatStore.addMessage(assistantMessage);
-        chatStore.setIsRunning(true);
-
-        // 3. Prepare messages for Ollama (including system prompt)
-        const systemMessage: OllamaMsg = {
-          role: "system",
-          content: systemPrompt,
-        };
-
-        const ollamaMessages = [
-          systemMessage,
-          ...convertToOllamaMessages([...messages, userMessage]),
-        ];
-
-        console.log("[OllamaRuntime] Sending to Ollama:", {
-          model: selectedModel,
-          messageCount: ollamaMessages.length,
-          hasImages: ollamaMessages.some((m) => m.images && m.images.length > 0),
-        });
-
-        // 4. Stream from Ollama
-        let accumulatedText = "";
-
-        const stream = await ollamaClient.chat({
-          model: selectedModel || "gemma3:latest",
-          messages: ollamaMessages,
-          stream: true,
-        });
-
-        // 5. Update message progressively as chunks arrive
-        for await (const chunk of stream) {
-          const delta = chunk.message.content;
-          accumulatedText += delta;
-
-          chatStore.updateMessage(assistantId, {
-            content: [{ type: "text", text: accumulatedText }],
-          });
-        }
-
-        // 6. Mark as complete
-        chatStore.updateMessage(assistantId, {
-          status: {
-            type: "complete",
-            reason: "stop",
-          },
-        });
-
-        chatStore.setIsRunning(false);
-
-        console.log("[OllamaRuntime] Streaming complete:", {
-          assistantId,
-          textLength: accumulatedText.length,
-        });
-      } catch (error) {
-        console.error("[OllamaRuntime] Error during streaming:", error);
-
-        // Mark as incomplete with error
-        chatStore.setIsRunning(false);
-
-        // Find the last assistant message and mark it with error
-        const currentMessages = chatStore.getCurrentMessages();
-        const lastAssistantMsg = currentMessages
-          .slice()
-          .reverse()
-          .find((m) => m.role === "assistant");
-
-        if (lastAssistantMsg) {
-          chatStore.updateMessage(lastAssistantMsg.id, {
-            status: {
-              type: "incomplete",
-              reason: "error",
-              error: error instanceof Error ? error.message : String(error),
-            },
-          });
-        }
+      // 0. Update thread model to current selected model (if changed)
+      const currentThread = chatStore.getCurrentThread();
+      if (currentThread && selectedModel && currentThread.model !== selectedModel) {
+        console.log("[OllamaRuntime] Updating thread model to:", selectedModel);
+        chatStore.updateThreadModel(chatStore.currentThreadId, selectedModel);
       }
+
+      // 1. Add user message to store
+      const userMessage: ThreadMessageLike = {
+        id: generateMessageId(),
+        role: "user",
+        content: [...message.content], // Convert readonly to mutable
+        attachments: message.attachments ? [...message.attachments] : undefined,
+        createdAt: new Date(),
+      };
+
+      chatStore.addMessage(userMessage);
+
+      console.log("[OllamaRuntime] User message added:", {
+        id: userMessage.id,
+        contentLength: userMessage.content.length,
+        hasAttachments: (userMessage.attachments?.length || 0) > 0,
+      });
+
+      // 2. Stream response using shared logic
+      await streamOllamaResponse(
+        [...messages, userMessage],
+        chatStore,
+        selectedModel || "gemma3:latest",
+        systemPrompt
+      );
     },
     [chatStore, messages, selectedModel, systemPrompt]
+  );
+
+  /**
+   * Handle reload (regenerate assistant message from a specific point)
+   */
+  const onReload = useCallback(
+    async (parentId: string | null) => {
+      console.log("[OllamaRuntime] Reloading from parentId:", parentId);
+
+      const currentMessages = chatStore.getCurrentMessages();
+
+      // Find the parent message (the user message before the assistant message to reload)
+      let cutoffIndex: number;
+
+      if (parentId === null) {
+        // No parent means this is the first assistant message
+        // Remove everything after index 0 (if there's a first user message)
+        cutoffIndex = 0;
+      } else {
+        // Find the parent message
+        const parentIndex = currentMessages.findIndex((m) => m.id === parentId);
+
+        if (parentIndex === -1) {
+          console.error("[OllamaRuntime] Parent message not found:", parentId);
+          return;
+        }
+
+        // Keep messages up to and including the parent
+        cutoffIndex = parentIndex + 1;
+      }
+
+      // Remove all messages after the parent (including the old assistant response)
+      const messagesUpToParent = currentMessages.slice(0, cutoffIndex);
+
+      console.log("[OllamaRuntime] Reloading from cutoff index:", cutoffIndex, "keeping", messagesUpToParent.length, "messages");
+
+      chatStore.setMessages(messagesUpToParent);
+
+      // Stream new response using shared logic
+      await streamOllamaResponse(
+        messagesUpToParent,
+        chatStore,
+        selectedModel || "gemma3:latest",
+        systemPrompt
+      );
+    },
+    [chatStore, selectedModel, systemPrompt]
+  );
+
+  /**
+   * Handle edit (edit user message and regenerate)
+   */
+  const onEdit = useCallback(
+    async (message: AppendMessage) => {
+      console.log("[OllamaRuntime] Editing message:", {
+        parentId: message.parentId,
+        contentLength: message.content.length,
+      });
+
+      const currentMessages = chatStore.getCurrentMessages();
+
+      // Handle parentId (null means this is the first message)
+      let messagesUpToParent: ThreadMessageLike[];
+
+      if (message.parentId === null) {
+        // This is the first message, start with empty array
+        messagesUpToParent = [];
+        console.log("[OllamaRuntime] Editing first message");
+      } else {
+        // Find the index of the parent message
+        const parentIndex = currentMessages.findIndex((m) => m.id === message.parentId);
+
+        if (parentIndex === -1) {
+          console.error("[OllamaRuntime] Parent message not found:", message.parentId);
+          return;
+        }
+
+        // Keep messages up to and including the parent
+        messagesUpToParent = currentMessages.slice(0, parentIndex + 1);
+      }
+
+      // Create the edited user message
+      const editedMessage: ThreadMessageLike = {
+        id: generateMessageId(),
+        role: "user",
+        content: [...message.content], // Convert readonly to mutable
+        attachments: message.attachments ? [...message.attachments] : undefined,
+        createdAt: new Date(),
+      };
+
+      // Update store with edited message
+      const newMessages = [...messagesUpToParent, editedMessage];
+
+      console.log("[OllamaRuntime] Setting edited messages, count:", newMessages.length);
+
+      chatStore.setMessages(newMessages);
+
+      // Stream new response using shared logic
+      await streamOllamaResponse(
+        newMessages,
+        chatStore,
+        selectedModel || "gemma3:latest",
+        systemPrompt
+      );
+    },
+    [chatStore, selectedModel, systemPrompt]
   );
 
   /**
@@ -237,7 +378,8 @@ export function OllamaRuntimeProvider({ children }: { children: ReactNode }) {
    */
   const convertMessage = useCallback((message: ThreadMessageLike) => {
     // Our messages are already in the correct format
-    return message as any;  // Type assertion to satisfy ExternalStoreRuntime
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return message as any;  // Type assertion required by ExternalStoreRuntime
   }, []);
 
   /**
@@ -299,12 +441,25 @@ export function OllamaRuntimeProvider({ children }: { children: ReactNode }) {
   }, [chatStore, selectedModel]);
 
   /**
+   * Wrapper for setMessages to handle readonly -> mutable conversion
+   */
+  const setMessages = useCallback(
+    (messages: readonly ThreadMessageLike[]) => {
+      chatStore.setMessages([...messages]); // Convert readonly to mutable
+    },
+    [chatStore]
+  );
+
+  /**
    * Create ExternalStoreRuntime with our Zustand store
    */
   const runtime = useExternalStoreRuntime({
     messages,
     isRunning: chatStore.isRunning,
+    setMessages,
     onNew,
+    onReload,
+    onEdit,
     convertMessage,
     adapters: {
       attachments: new VisionImageAdapter(),

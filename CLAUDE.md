@@ -338,10 +338,18 @@ Sidebar footer features:
 - ✅ Model persists per-thread
 - ✅ Multi-thread support with thread list adapter
 - ✅ Cleaner codebase (removed 5 files)
+- ✅ Full message editing and regeneration support (onReload, onEdit)
+- ✅ Conversation branching (reload any previous message)
+
+**Recent Fixes (Jan 2025):**
+- ✅ Implemented `onReload` handler - Reload button works on any assistant message
+- ✅ Implemented `onEdit` handler - Edit button works on any user message
+- ✅ Fixed branching - Can reload/edit previous messages to create conversation branches
+- ✅ Fixed first message edit - Handles null parentId correctly
+- ✅ Copy button works (built-in by assistant-ui)
 
 **Known Issues:**
-- ⚠️ Copy/Reload buttons not implemented (requires onReload/onCopy handlers)
-- ⚠️ Model sync on active thread needs refinement
+- ⚠️ Model sync on active thread needs refinement (works on non-active threads)
 
 ## Build and Deployment
 
