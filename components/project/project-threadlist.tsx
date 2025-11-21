@@ -18,13 +18,11 @@ import { Button } from "@/components/ui/button";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface ProjectThreadListProps {
-  projectId: string;
-}
+// interface ProjectThreadListProps {
+//   projectId: string;
+// }
 
-export const ProjectThreadList: FC<ProjectThreadListProps> = ({
-  projectId,
-}) => {
+export const ProjectThreadList: FC = () => {
   return (
     <ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col items-stretch gap-1.5">
       <ThreadListBackToHome />

@@ -82,7 +82,7 @@ export function ProjectThreadListSidebar({
         </div>
       </SidebarHeader>
       <SidebarContent className="aui-sidebar-content px-2">
-        <ProjectThreadList projectId={projectId} />
+        <ProjectThreadList />
       </SidebarContent>
       <SidebarRail />
       <SidebarFooter className="aui-sidebar-footer border-t">

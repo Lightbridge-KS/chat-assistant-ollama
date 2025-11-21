@@ -9,7 +9,7 @@
 "use client";
 
 import * as React from "react";
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import {
   useExternalStoreRuntime,
   AssistantRuntimeProvider,
@@ -240,10 +240,13 @@ export function OllamaProjectRuntimeProvider({
     }
   }, [currentThreadId, projectId, projectStore, selectedModel, setSelectedModel]);
 
-  // Get messages for current thread
-  const messages = currentThreadId
-    ? projectStore.getProjectThreadMessages(projectId, currentThreadId)
-    : [];
+  // Get messages for current thread (memoized to prevent dependency changes)
+  const messages = useMemo(
+    () => (currentThreadId
+      ? projectStore.getProjectThreadMessages(projectId, currentThreadId)
+      : []),
+    [currentThreadId, projectId, projectStore]
+  );
 
   /**
    * Handle new messages (when user sends a message)
@@ -491,7 +494,7 @@ export function OllamaProjectRuntimeProvider({
         }
       },
     };
-  }, [projectStore.projects, projectId, currentThreadId, selectedModel]);
+  }, [projectStore, projectId, currentThreadId, selectedModel]);
 
   /**
    * Create ExternalStoreRuntime
