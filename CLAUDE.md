@@ -50,6 +50,7 @@ The production build uses nginx reverse proxy to avoid CORS issues.
 - ✅ Settings Page - Runtime-configurable Ollama URL and system prompt (persists to localStorage)
 - ✅ Theme/Appearance Selector - System/Light/Dark mode with localStorage persistence
 - ✅ Vision/Image Support - Upload images with text for vision-capable models
+- ✅ Projects Feature - Organize chats by project with custom instructions (persists to localStorage)
 
 ## Project Structure
 
@@ -66,22 +67,30 @@ app/
 ├── assistant.tsx           # Main chat component with custom Ollama runtime
 ├── settings/
 │   └── page.tsx            # Settings page (Ollama URL & system prompt)
+├── projects/
+│   ├── page.tsx            # Projects gallery/detail (query param routing)
+│   └── create/
+│       └── page.tsx        # Create new project
 └── layout.tsx              # Root layout (uses local fonts)
 
 components/
 ├── theme-provider.tsx      # next-themes wrapper for dark mode support
 ├── assistant-ui/
 │   ├── thread.tsx          # Main thread UI (messages, composer, actions)
-│   ├── thread-list.tsx     # Thread management (new/archive)
+│   ├── thread-list.tsx     # Thread management (new/archive) with Projects button
 │   ├── threadlist-sidebar.tsx  # Sidebar with dropdown menu & dynamic hostname
 │   ├── model-selector.tsx  # Model dropdown (uses ollama/browser)
 │   ├── markdown-text.tsx   # Markdown renderer
 │   ├── shiki-highlighter.tsx   # Syntax highlighting
 │   └── attachment.tsx      # Image attachment UI components
+├── project/
+│   ├── projects-gallery-view.tsx   # Gallery list with delete menu
+│   ├── project-detail-view.tsx     # Individual project with chat interface
+│   └── project-instruction-dialog.tsx  # Edit project instruction
 └── ui/
     ├── select.tsx          # Radix Select wrapper
-    ├── dropdown-menu.tsx   # Dropdown menu (used in sidebar)
-    ├── card.tsx            # Card wrapper (used in settings)
+    ├── dropdown-menu.tsx   # Dropdown menu (used in sidebar & project cards)
+    ├── card.tsx            # Card wrapper (used in settings & projects)
     ├── textarea.tsx        # Textarea input (used in settings)
     └── [other shadcn components]
 
@@ -90,9 +99,10 @@ lib/
 ├── ollama-external-runtime.tsx # ExternalStoreRuntime provider with Zustand (NEW - v2)
 ├── vision-image-adapter.ts     # Attachment adapter for vision-capable models
 └── stores/
-    ├── chat-store.ts       # Zustand store for conversations with automatic persistence (NEW)
+    ├── chat-store.ts       # Zustand store for conversations with automatic persistence
     ├── model-store.ts      # Zustand store for selected model
-    └── settings-store.ts   # Zustand store for Ollama URL, system prompt, and appearance
+    ├── settings-store.ts   # Zustand store for Ollama URL, system prompt, and appearance
+    └── project-store.ts    # Zustand store for projects (CRUD + localStorage persistence)
 
 .env.development            # Dev: http://localhost:11434
 .env.production             # Prod: http://10.6.34.95/radchat/api/ollama
@@ -230,6 +240,70 @@ Provides:
 3. Upload image (JPEG, PNG, WebP, GIF)
 4. Type your message
 5. Send - model will analyze image and respond
+
+## Projects Feature
+
+### Overview
+
+Projects allow organizing chats by topic/context with custom instructions. Each project has a name, description, and instruction field that will be used as project-scoped prompt (appended after system prompt - to be implemented).
+
+### Implementation
+
+**File:** `/app/projects/page.tsx`
+
+Single page handling both gallery and detail views using query parameters:
+- `/projects` - Gallery view (grid of project cards)
+- `/projects?id=abc-123` - Detail view (project chat interface)
+- Uses query param routing for static export compatibility
+
+**File:** `/lib/stores/project-store.ts`
+
+Zustand store with localStorage persistence:
+```typescript
+interface Project {
+  id: string;          // Auto-generated UUID
+  name: string;
+  description: string;
+  instruction: string;  // Custom prompt for this project
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+### Key Features
+
+- ✅ **Projects Gallery** - Grid view with search bar and "New project" button
+- ✅ **Create Project** - Form at `/projects/create` with name and description fields
+- ✅ **Project Detail** - Two-column layout: chat interface (left) + instruction card (right)
+- ✅ **Edit Instruction** - Dialog for editing project-specific instructions
+- ✅ **Delete Project** - Dropdown menu with confirmation dialog on each card
+- ✅ **Persistence** - All data stored in localStorage via Zustand
+- ✅ **Empty States** - Helpful messages when no projects exist
+- ✅ **Navigation** - "Projects" button in thread list sidebar
+
+### File Structure
+
+```
+/projects              → Gallery or detail based on query param
+/projects/create       → Create new project form
+```
+
+### Status
+
+**Completed:**
+- Projects button in sidebar
+- Gallery with create/delete functionality
+- Project detail page with chat interface
+- Instruction editing with dialog
+- localStorage persistence via Zustand
+- Query parameter routing for static export
+
+**Next Steps:**
+- Integrate project instruction into system prompt
+- Filter threads by project ID
+- Project-specific chat history
+
+---
 
 ## Settings Page
 
