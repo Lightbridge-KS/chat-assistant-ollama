@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ArrowLeft, Search, Plus, MoreVertical, Trash2 } from "lucide-react";
 import {
   Card,
-  CardAction,
   CardDescription,
   CardHeader,
   CardTitle,

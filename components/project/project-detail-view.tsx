@@ -6,8 +6,8 @@ import { ArrowLeft, PencilIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ModelSelector } from "@/components/assistant-ui/model-selector";
-import { Thread } from "@/components/assistant-ui/thread";
-import { OllamaRuntimeProvider } from "@/lib/ollama-external-runtime";
+import { ProjectThread } from "@/components/project/project-thread";
+import { OllamaProjectRuntimeProvider } from "@/lib/ollama-project-runtime";
 import { ProjectInstructionDialog } from "@/components/project/project-instruction-dialog";
 import { useProjectStore } from "@/lib/stores/project-store";
 
@@ -46,7 +46,7 @@ export function ProjectDetailView({
   }
 
   return (
-    <OllamaRuntimeProvider>
+    <OllamaProjectRuntimeProvider projectId={projectId}>
       <div className="flex h-screen flex-col">
         {/* Header */}
         <header className="flex h-16 items-center gap-4 border-b px-6">
@@ -73,7 +73,7 @@ export function ProjectDetailView({
 
         {/* Main content - two columns */}
         <main className="flex flex-1 overflow-hidden">
-          {/* Left section - Project info + Thread */}
+          {/* Left section - Project Thread (Composer + Thread List) */}
           <div className="flex flex-1 flex-col overflow-hidden">
             {/* Project header */}
             <div className="border-b px-6 py-4">
@@ -83,9 +83,9 @@ export function ProjectDetailView({
               </p>
             </div>
 
-            {/* Thread with messages and composer */}
+            {/* Project Thread with composer and thread list */}
             <div className="flex-1 overflow-hidden">
-              <Thread />
+              <ProjectThread projectId={projectId} />
             </div>
           </div>
 
@@ -112,8 +112,6 @@ export function ProjectDetailView({
                 </p>
               </CardContent>
             </Card>
-
-            {/* Future: Chat stubs list will go here */}
           </aside>
         </main>
 
@@ -125,6 +123,6 @@ export function ProjectDetailView({
           onSave={handleSaveInstruction}
         />
       </div>
-    </OllamaRuntimeProvider>
+    </OllamaProjectRuntimeProvider>
   );
 }

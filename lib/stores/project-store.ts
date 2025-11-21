@@ -9,6 +9,42 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
 /**
+ * Project thread message (reuse type from chat-store)
+ */
+export interface ProjectThreadMessage {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string | Array<{ type: string; text?: string; image?: string; [key: string]: unknown }>;
+  createdAt: Date;
+  attachments?: Array<{
+    id: string;
+    type: string;
+    name: string;
+    contentType: string;
+    content: Array<{ type: string; image?: string; [key: string]: unknown }>;
+  }>;
+  status?: {
+    type: string;
+    reason?: string;
+    error?: string;
+  };
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Project thread interface
+ */
+export interface ProjectThread {
+  id: string;
+  projectId: string;
+  messages: ProjectThreadMessage[];
+  model: string;
+  createdAt: string;
+  updatedAt: string;
+  title: string;
+}
+
+/**
  * Project interface
  */
 export interface Project {
@@ -18,6 +54,7 @@ export interface Project {
   instruction: string;
   createdAt: string;
   updatedAt: string;
+  projectThreads: Record<string, ProjectThread>;
 }
 
 /**
@@ -31,19 +68,40 @@ export interface ProjectStore {
   getAllProjects: () => Project[];
   getProject: (id: string) => Project | undefined;
 
-  // Actions
+  // Project actions
   addProject: (
-    project: Omit<Project, "id" | "createdAt" | "updatedAt">
+    project: Omit<Project, "id" | "createdAt" | "updatedAt" | "projectThreads">
   ) => string;
-  updateProject: (id: string, updates: Partial<Omit<Project, "id">>) => void;
+  updateProject: (id: string, updates: Partial<Omit<Project, "id" | "projectThreads">>) => void;
   deleteProject: (id: string) => void;
+
+  // Project thread getters
+  getProjectThreads: (projectId: string) => ProjectThread[];
+  getProjectThread: (projectId: string, threadId: string) => ProjectThread | undefined;
+  getProjectThreadMessages: (projectId: string, threadId: string) => ProjectThreadMessage[];
+
+  // Project thread actions
+  createProjectThread: (projectId: string, model?: string) => string;
+  deleteProjectThread: (projectId: string, threadId: string) => void;
+  addProjectMessage: (projectId: string, threadId: string, message: ProjectThreadMessage) => void;
+  updateProjectMessage: (
+    projectId: string,
+    threadId: string,
+    messageId: string,
+    updates: Partial<ProjectThreadMessage>
+  ) => void;
+  setProjectMessages: (
+    projectId: string,
+    threadId: string,
+    messages: ProjectThreadMessage[]
+  ) => void;
 
   // Utility
   clearAllProjects: () => void;
 }
 
 /**
- * Generate unique ID for projects
+ * Generate unique ID for projects and threads
  */
 function generateProjectId(): string {
   // Use crypto.randomUUID if available (modern browsers)
@@ -53,6 +111,33 @@ function generateProjectId(): string {
 
   // Fallback for older browsers or non-secure contexts
   return `project-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+}
+
+/**
+ * Generate thread title from first user message
+ */
+function generateThreadTitle(messages: ProjectThreadMessage[]): string {
+  const firstUserMessage = messages.find((m) => m.role === "user");
+
+  if (!firstUserMessage) {
+    return "New Conversation";
+  }
+
+  // Extract text from content
+  let text = "";
+
+  if (typeof firstUserMessage.content === "string") {
+    text = firstUserMessage.content;
+  } else if (Array.isArray(firstUserMessage.content)) {
+    text = firstUserMessage.content
+      .filter((c) => c.type === "text" && c.text)
+      .map((c) => c.text)
+      .join(" ");
+  }
+
+  // Truncate to 50 characters
+  const truncated = text.substring(0, 50);
+  return truncated.length < text.length ? `${truncated}...` : truncated || "New Conversation";
 }
 
 /**
@@ -78,7 +163,7 @@ export const useProjectStore = create<ProjectStore>()(
         return state.projects[id];
       },
 
-      // Actions
+      // Project actions
       addProject: (project) => {
         const newId = generateProjectId();
         const now = new Date().toISOString();
@@ -89,6 +174,7 @@ export const useProjectStore = create<ProjectStore>()(
             id: newId,
             createdAt: now,
             updatedAt: now,
+            projectThreads: {}, // Initialize empty threads
           };
         });
 
@@ -116,6 +202,121 @@ export const useProjectStore = create<ProjectStore>()(
         });
 
         console.log("[ProjectStore] Deleted project:", id);
+      },
+
+      // Project thread getters
+      getProjectThreads: (projectId: string) => {
+        const state = get();
+        const project = state.projects[projectId];
+        if (!project) return [];
+
+        return (Object.values(project.projectThreads) as ProjectThread[]).sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+      },
+
+      getProjectThread: (projectId: string, threadId: string) => {
+        const state = get();
+        const project = state.projects[projectId];
+        return project?.projectThreads[threadId];
+      },
+
+      getProjectThreadMessages: (projectId: string, threadId: string) => {
+        const state = get();
+        const thread = state.projects[projectId]?.projectThreads[threadId];
+        return thread?.messages || [];
+      },
+
+      // Project thread actions
+      createProjectThread: (projectId: string, model?: string) => {
+        const newThreadId = generateProjectId();
+        const now = new Date().toISOString();
+
+        set((state) => {
+          const project = state.projects[projectId];
+          if (project) {
+            project.projectThreads[newThreadId] = {
+              id: newThreadId,
+              projectId,
+              messages: [],
+              model: model || "",
+              createdAt: now,
+              updatedAt: now,
+              title: "New Conversation",
+            };
+            project.updatedAt = now;
+          }
+        });
+
+        console.log("[ProjectStore] Created project thread:", newThreadId, "in project:", projectId);
+        return newThreadId;
+      },
+
+      deleteProjectThread: (projectId: string, threadId: string) => {
+        set((state) => {
+          const project = state.projects[projectId];
+          if (project) {
+            delete project.projectThreads[threadId];
+            project.updatedAt = new Date().toISOString();
+          }
+        });
+
+        console.log("[ProjectStore] Deleted project thread:", threadId);
+      },
+
+      addProjectMessage: (projectId: string, threadId: string, message: ProjectThreadMessage) => {
+        set((state) => {
+          const thread = state.projects[projectId]?.projectThreads[threadId];
+          if (thread) {
+            thread.messages.push(message);
+            thread.updatedAt = new Date().toISOString();
+
+            // Update thread title if this is the first user message
+            if (message.role === "user" && thread.messages.length === 1) {
+              thread.title = generateThreadTitle(thread.messages);
+            }
+
+            // Update parent project timestamp
+            state.projects[projectId].updatedAt = new Date().toISOString();
+          }
+        });
+      },
+
+      updateProjectMessage: (
+        projectId: string,
+        threadId: string,
+        messageId: string,
+        updates: Partial<ProjectThreadMessage>
+      ) => {
+        set((state) => {
+          const thread = state.projects[projectId]?.projectThreads[threadId];
+          if (thread) {
+            const messageIndex = thread.messages.findIndex((m) => m.id === messageId);
+            if (messageIndex !== -1) {
+              thread.messages[messageIndex] = {
+                ...thread.messages[messageIndex],
+                ...updates,
+              };
+              thread.updatedAt = new Date().toISOString();
+              state.projects[projectId].updatedAt = new Date().toISOString();
+            }
+          }
+        });
+      },
+
+      setProjectMessages: (
+        projectId: string,
+        threadId: string,
+        messages: ProjectThreadMessage[]
+      ) => {
+        set((state) => {
+          const thread = state.projects[projectId]?.projectThreads[threadId];
+          if (thread) {
+            thread.messages = messages;
+            thread.updatedAt = new Date().toISOString();
+            state.projects[projectId].updatedAt = new Date().toISOString();
+          }
+        });
       },
 
       // Utility

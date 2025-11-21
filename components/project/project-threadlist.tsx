@@ -1,3 +1,10 @@
+/**
+ * Project Thread List Component
+ *
+ * Thread list for project-specific threads in sidebar.
+ * Similar to ThreadList but for project context.
+ */
+
 import type { FC } from "react";
 import Link from "next/link";
 import {
@@ -5,18 +12,23 @@ import {
   ThreadListPrimitive,
   useAssistantState,
 } from "@assistant-ui/react";
-import { ArchiveIcon, PlusIcon, FolderKanban } from "lucide-react";
+import { ArchiveIcon, PlusIcon, ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-//  🗂️  ThreadList (threads) - Manages the list of conversations
-export const ThreadList: FC = () => {
+interface ProjectThreadListProps {
+  projectId: string;
+}
+
+export const ProjectThreadList: FC<ProjectThreadListProps> = ({
+  projectId,
+}) => {
   return (
     <ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col items-stretch gap-1.5">
       <ThreadListNew />
-      <ThreadListProject />
+      <ThreadListBackToProject projectId={projectId} />
       <ThreadListItems />
     </ThreadListPrimitive.Root>
   );
@@ -30,21 +42,21 @@ const ThreadListNew: FC = () => {
         variant="ghost"
       >
         <PlusIcon />
-        New Chat
+        New Conversation
       </Button>
     </ThreadListPrimitive.New>
   );
 };
 
-const ThreadListProject: FC = () => {
+const ThreadListBackToProject: FC<{ projectId: string }> = ({ projectId }) => {
   return (
-    <Link href="/projects" className="hover:bg-muted rounded-lg">
+    <Link href={`/projects?id=${projectId}`}>
       <Button
-        className="aui-thread-list-project flex items-center justify-start gap-1 rounded-lg px-2.5 py-2 text-start w-full"
+        className="aui-thread-list-project flex items-center justify-start gap-1 rounded-lg px-2.5 py-2 text-start hover:bg-muted"
         variant="ghost"
       >
-        <FolderKanban />
-        Projects
+        <ArrowLeft />
+        Back to Project
       </Button>
     </Link>
   );
@@ -93,7 +105,7 @@ const ThreadListItem: FC = () => {
 const ThreadListItemTitle: FC = () => {
   return (
     <span className="aui-thread-list-item-title text-sm">
-      <ThreadListItemPrimitive.Title fallback="New Chat" />
+      <ThreadListItemPrimitive.Title fallback="New Conversation" />
     </span>
   );
 };
@@ -104,7 +116,7 @@ const ThreadListItemArchive: FC = () => {
       <TooltipIconButton
         className="aui-thread-list-item-archive mr-3 ml-auto size-4 p-0 text-foreground hover:text-primary"
         variant="ghost"
-        tooltip="Archive thread"
+        tooltip="Delete thread"
       >
         <ArchiveIcon />
       </TooltipIconButton>

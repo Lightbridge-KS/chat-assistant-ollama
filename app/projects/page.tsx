@@ -1,10 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ProjectsGalleryView } from "@/components/project/projects-gallery-view";
 import { ProjectDetailView } from "@/components/project/project-detail-view";
 
-export default function ProjectsPage() {
+function ProjectsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const projectId = searchParams.get("id");
@@ -26,4 +27,12 @@ export default function ProjectsPage() {
 
   // Otherwise show gallery view
   return <ProjectsGalleryView onProjectClick={handleProjectClick} />;
+}
+
+export default function ProjectsPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+      <ProjectsPageContent />
+    </Suspense>
+  );
 }
