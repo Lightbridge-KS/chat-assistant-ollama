@@ -23,6 +23,10 @@ import {
   getChatStorageStats,
   exportChatData,
 } from "@/lib/stores/chat-store";
+import {
+  useProjectStore,
+  getProjectStorageStats,
+} from "@/lib/stores/project-store";
 
 export default function SettingsPage() {
   // Get current settings from store
@@ -58,6 +62,15 @@ export default function SettingsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Project storage stats state
+  const [projectStorageStats, setProjectStorageStats] = useState({
+    usedMB: 0,
+    projectCount: 0,
+    threadCount: 0,
+  });
+  const [isDeletingProjects, setIsDeletingProjects] = useState(false);
+  const [showProjectDeleteConfirm, setShowProjectDeleteConfirm] = useState(false);
+
   // Handle save button for Ollama settings
   const handleSaveOllama = () => {
     setOllamaHostUrl(draftUrl);
@@ -91,8 +104,24 @@ export default function SettingsPage() {
 
   // Load storage stats on mount and when chat store changes
   useEffect(() => {
+    // Load chat storage stats
     const stats = getChatStorageStats();
     setStorageStats(stats);
+
+    // Load project storage stats
+    const projectStats = getProjectStorageStats();
+
+    // Calculate total thread count across all projects
+    const allProjects = useProjectStore.getState().getAllProjects();
+    const totalThreads = allProjects.reduce(
+      (sum, project) => sum + Object.keys(project.projectThreads).length,
+      0
+    );
+
+    setProjectStorageStats({
+      ...projectStats,
+      threadCount: totalThreads,
+    });
   }, []);
 
   // Handle export conversations
@@ -136,6 +165,35 @@ export default function SettingsPage() {
     }
   };
 
+  // Handle delete all projects
+  const handleDeleteProjects = () => {
+    if (!showProjectDeleteConfirm) {
+      setShowProjectDeleteConfirm(true);
+      return;
+    }
+
+    setIsDeletingProjects(true);
+    try {
+      // Clear all projects using project store
+      useProjectStore.getState().clearAllProjects();
+
+      // Refresh stats
+      const projectStats = getProjectStorageStats();
+      setProjectStorageStats({
+        ...projectStats,
+        threadCount: 0,
+      });
+      setShowProjectDeleteConfirm(false);
+
+      setTimeout(() => {
+        setIsDeletingProjects(false);
+      }, 500);
+    } catch (error) {
+      console.error("Delete projects failed:", error);
+      setIsDeletingProjects(false);
+    }
+  };
+
   return (
     <div className="flex h-screen flex-col">
       <header className="border-b px-6 py-4">
@@ -145,7 +203,7 @@ export default function SettingsPage() {
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="size-4" />
-            Back to Chat
+            Back to Home
           </Link>
         </div>
         <h1 className="mt-4 text-2xl font-semibold">Settings</h1>
@@ -309,7 +367,7 @@ export default function SettingsPage() {
                         This will permanently delete all saved conversations
                       </span>
                     ) : (
-                      "Clear all saved conversation history"
+                      "Clear all saved conversation history, exclude project conversation."
                     )}
                   </p>
                 </div>
@@ -320,6 +378,44 @@ export default function SettingsPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowDeleteConfirm(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteProjects}
+                    disabled={isDeletingProjects || projectStorageStats.projectCount === 0}
+                    className="gap-2"
+                  >
+                    <Trash2 className="size-4" />
+                    {showProjectDeleteConfirm
+                      ? "Click again to confirm"
+                      : isDeletingProjects
+                        ? "Deleting..."
+                        : "Delete All Projects"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    {showProjectDeleteConfirm ? (
+                      <span className="text-destructive font-medium">
+                        This will permanently delete all {projectStorageStats.projectCount} projects
+                        and {projectStorageStats.threadCount} project conversations
+                      </span>
+                    ) : (
+                      `Clear all projects and project conversations (${projectStorageStats.projectCount} projects, ${projectStorageStats.threadCount} threads, ${projectStorageStats.usedMB.toFixed(2)} MB)`
+                    )}
+                  </p>
+                </div>
+
+                {showProjectDeleteConfirm && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowProjectDeleteConfirm(false)}
                     >
                       Cancel
                     </Button>

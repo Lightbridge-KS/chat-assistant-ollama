@@ -50,6 +50,7 @@ The production build uses nginx reverse proxy to avoid CORS issues.
 - ✅ Settings Page - Runtime-configurable Ollama URL and system prompt (persists to localStorage)
 - ✅ Theme/Appearance Selector - System/Light/Dark mode with localStorage persistence
 - ✅ Vision/Image Support - Upload images with text for vision-capable models
+- ✅ Projects Feature - Organize chats by project with custom instructions (persists to localStorage)
 
 ## Project Structure
 
@@ -66,33 +67,49 @@ app/
 ├── assistant.tsx           # Main chat component with custom Ollama runtime
 ├── settings/
 │   └── page.tsx            # Settings page (Ollama URL & system prompt)
+├── projects/
+│   ├── page.tsx            # Projects gallery/detail (query param routing)
+│   ├── create/
+│   │   └── page.tsx        # Create new project
+│   └── thread/
+│       └── page.tsx        # Project thread conversation view
 └── layout.tsx              # Root layout (uses local fonts)
 
 components/
 ├── theme-provider.tsx      # next-themes wrapper for dark mode support
 ├── assistant-ui/
 │   ├── thread.tsx          # Main thread UI (messages, composer, actions)
-│   ├── thread-list.tsx     # Thread management (new/archive)
+│   ├── thread-list.tsx     # Thread management (new/archive) with Projects button
 │   ├── threadlist-sidebar.tsx  # Sidebar with dropdown menu & dynamic hostname
 │   ├── model-selector.tsx  # Model dropdown (uses ollama/browser)
 │   ├── markdown-text.tsx   # Markdown renderer
 │   ├── shiki-highlighter.tsx   # Syntax highlighting
 │   └── attachment.tsx      # Image attachment UI components
+├── project/
+│   ├── projects-gallery-view.tsx   # Gallery list with delete menu
+│   ├── project-detail-view.tsx     # Individual project with chat interface
+│   ├── project-instruction-dialog.tsx  # Edit project instruction
+│   ├── project-thread.tsx          # Composer + thread list cards (auto-redirects to thread view)
+│   ├── project-thread-view.tsx     # Full conversation view layout
+│   ├── project-threadlist.tsx      # Thread list for sidebar
+│   └── project-threadlist-sidebar.tsx  # Sidebar with project context
 └── ui/
     ├── select.tsx          # Radix Select wrapper
-    ├── dropdown-menu.tsx   # Dropdown menu (used in sidebar)
-    ├── card.tsx            # Card wrapper (used in settings)
+    ├── dropdown-menu.tsx   # Dropdown menu (used in sidebar & project cards)
+    ├── card.tsx            # Card wrapper (used in settings & projects)
     ├── textarea.tsx        # Textarea input (used in settings)
     └── [other shadcn components]
 
 lib/
 ├── ollama-client.ts            # Ollama browser client (direct API calls)
-├── ollama-external-runtime.tsx # ExternalStoreRuntime provider with Zustand (NEW - v2)
+├── ollama-external-runtime.tsx # ExternalStoreRuntime provider with Zustand (global chat)
+├── ollama-project-runtime.tsx  # Project-specific runtime with instruction injection
 ├── vision-image-adapter.ts     # Attachment adapter for vision-capable models
 └── stores/
-    ├── chat-store.ts       # Zustand store for conversations with automatic persistence (NEW)
+    ├── chat-store.ts       # Zustand store for conversations with automatic persistence
     ├── model-store.ts      # Zustand store for selected model
-    └── settings-store.ts   # Zustand store for Ollama URL, system prompt, and appearance
+    ├── settings-store.ts   # Zustand store for Ollama URL, system prompt, and appearance
+    └── project-store.ts    # Zustand store for projects + project threads (localStorage persistence)
 
 .env.development            # Dev: http://localhost:11434
 .env.production             # Prod: http://10.6.34.95/radchat/api/ollama
@@ -230,6 +247,108 @@ Provides:
 3. Upload image (JPEG, PNG, WebP, GIF)
 4. Type your message
 5. Send - model will analyze image and respond
+
+## Projects Feature
+
+### Overview
+
+Projects organize chats by topic/context with custom instructions. Each project has project-specific threads with instruction automatically appended to system prompt.
+
+### Implementation
+
+**Routes:**
+- `/projects` - Gallery view (grid of project cards)
+- `/projects?id=abc-123` - Project detail (composer + thread list cards)
+- `/projects/thread?id=xyz-789` - Full conversation view with sidebar
+- `/projects/create` - Create new project form
+
+**File:** `/lib/stores/project-store.ts`
+
+Zustand store with localStorage persistence:
+```typescript
+interface Project {
+  id: string;
+  name: string;
+  description: string;
+  instruction: string;  // Appended to system prompt
+  createdAt: string;
+  updatedAt: string;
+  projectThreads: Record<string, ProjectThread>;
+}
+
+interface ProjectThread {
+  id: string;
+  projectId: string;
+  messages: ProjectThreadMessage[];
+  model: string;
+  createdAt: string;
+  updatedAt: string;
+  title: string;  // Auto-generated from first user message
+}
+```
+
+**File:** `/lib/ollama-project-runtime.tsx`
+
+Project-specific runtime provider:
+- Accepts `projectId` and optional `threadId` props
+- Injects project instruction into system prompt: `systemPrompt + "\n\n" + projectInstruction`
+- Thread list adapter for sidebar thread switching
+- Automatic thread creation on first message
+- Full message lifecycle support (onNew, onReload, onEdit)
+
+### Key Features
+
+- ✅ **Projects Gallery** - Grid view with search, create, and delete
+- ✅ **Create Project** - Form with name, description, and instruction
+- ✅ **Project Threads** - Composer creates project-specific threads
+- ✅ **Thread Conversation** - Full view with sidebar (similar to main chat)
+- ✅ **Auto-Redirect** - Sending first message redirects to thread view
+- ✅ **Thread Switching** - Sidebar with thread list (New Conversation, Back to Project)
+- ✅ **Project Instruction** - Automatically appended to system prompt
+- ✅ **Thread Persistence** - All threads stored in project-store (localStorage)
+- ✅ **Reuses Components** - `<Thread />` component completely reused
+
+### Architecture
+
+**Project Detail View** (`/projects?id=xxx`):
+```
+OllamaProjectRuntimeProvider (no threadId)
+  └─ ProjectThread
+      ├─ Composer (creates new thread)
+      └─ Thread Cards (clickable, redirects to /projects/thread?id=yyy)
+```
+
+**Project Thread View** (`/projects/thread?id=yyy`):
+```
+OllamaProjectRuntimeProvider (with threadId)
+  └─ SidebarProvider
+      ├─ ProjectThreadListSidebar (project context)
+      │   └─ ProjectThreadList (thread items)
+      └─ SidebarInset
+          ├─ Header (breadcrumb + ModelSelector)
+          └─ Thread (REUSED from main chat)
+```
+
+### Known Issues & Fixes
+
+**Infinite Loop Prevention:**
+- Always select raw `Record` from Zustand store, transform in component
+- Never use getters that return new arrays (`getProjectThreads()`)
+- Pattern: `const record = useStore((state) => state.record); const array = Object.values(record);`
+
+### Status
+
+**Completed:**
+- ✅ Projects CRUD (create, read, update, delete)
+- ✅ Project-specific threads with composer
+- ✅ Full thread conversation view with sidebar
+- ✅ Project instruction injection into system prompt
+- ✅ Auto-redirect on first message
+- ✅ Thread switching via sidebar
+- ✅ Persistence via localStorage
+- ✅ Query parameter routing for static export
+
+---
 
 ## Settings Page
 
