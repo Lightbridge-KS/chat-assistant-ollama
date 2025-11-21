@@ -15,8 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 export const ThreadList: FC = () => {
   return (
     <ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col items-stretch gap-1.5">
-      <ThreadListNew />
       <ThreadListProject />
+      <ThreadListNew />
       <ThreadListItems />
     </ThreadListPrimitive.Root>
   );

@@ -27,8 +27,8 @@ export const ProjectThreadList: FC<ProjectThreadListProps> = ({
 }) => {
   return (
     <ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col items-stretch gap-1.5">
+      <ThreadListBackToHome />
       <ThreadListNew />
-      <ThreadListBackToProject projectId={projectId} />
       <ThreadListItems />
     </ThreadListPrimitive.Root>
   );
@@ -48,15 +48,15 @@ const ThreadListNew: FC = () => {
   );
 };
 
-const ThreadListBackToProject: FC<{ projectId: string }> = ({ projectId }) => {
+const ThreadListBackToHome: FC = () => {
   return (
-    <Link href={`/projects?id=${projectId}`}>
+    <Link href="/">
       <Button
         className="aui-thread-list-project flex items-center justify-start gap-1 rounded-lg px-2.5 py-2 text-start hover:bg-muted"
         variant="ghost"
       >
         <ArrowLeft />
-        Back to Project
+        Back to Home
       </Button>
     </Link>
   );

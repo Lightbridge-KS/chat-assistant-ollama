@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Search, Plus, MoreVertical, Trash2 } from "lucide-react";
+import { ArrowLeft, Search, Plus, MoreVertical, Trash2, PencilIcon } from "lucide-react";
 import {
   Card,
   CardDescription,
@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ProjectEditDialog } from "@/components/project/project-edit-dialog";
 import { useProjectStore } from "@/lib/stores/project-store";
 
 interface ProjectsGalleryViewProps {
@@ -37,6 +38,7 @@ export function ProjectsGalleryView({
   // Get raw projects object and convert to array in component
   // This avoids infinite loop from getAllProjects() creating new array every render
   const projectsRecord = useProjectStore((state) => state.projects);
+  const updateProject = useProjectStore((state) => state.updateProject);
   const deleteProject = useProjectStore((state) => state.deleteProject);
 
   const projects = Object.values(projectsRecord).sort(
@@ -44,12 +46,54 @@ export function ProjectsGalleryView({
       new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   );
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Filter projects by search query (case-insensitive name match)
+  const filteredProjects = projects.filter((project) =>
+    project.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState<{
+    id: string;
+    name: string;
+    description: string;
+  } | null>(null);
+
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<{
     id: string;
     name: string;
   } | null>(null);
+
+  const handleEditClick = (
+    projectId: string,
+    projectName: string,
+    projectDescription: string
+  ) => {
+    setProjectToEdit({
+      id: projectId,
+      name: projectName,
+      description: projectDescription,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = (name: string, description: string) => {
+    if (projectToEdit) {
+      updateProject(projectToEdit.id, { name, description });
+      setEditDialogOpen(false);
+      setProjectToEdit(null);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditDialogOpen(false);
+    setProjectToEdit(null);
+  };
 
   const handleDeleteClick = (projectId: string, projectName: string) => {
     setProjectToDelete({ id: projectId, name: projectName });
@@ -79,7 +123,7 @@ export function ProjectsGalleryView({
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="size-4" />
-            Back to Chat
+            Back to Home
           </Link>
         </div>
 
@@ -95,6 +139,8 @@ export function ProjectsGalleryView({
                 type="text"
                 placeholder="Search projects..."
                 className="pl-9 w-64"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
@@ -112,24 +158,37 @@ export function ProjectsGalleryView({
       {/* Main content - Project cards grid */}
       <main className="flex-1 overflow-auto px-6 py-8">
         <div className="mx-auto max-w-6xl">
-          {projects.length === 0 ? (
+          {filteredProjects.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-12">
-              <p className="text-muted-foreground text-lg mb-4">
-                No projects yet
-              </p>
-              <p className="text-sm text-muted-foreground mb-6">
-                Create your first project to get started
-              </p>
-              <Link href="/projects/create">
-                <Button>
-                  <Plus className="size-4 mr-2" />
-                  Create Project
-                </Button>
-              </Link>
+              {projects.length === 0 ? (
+                <>
+                  <p className="text-muted-foreground text-lg mb-4">
+                    No projects yet
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Create your first project to get started
+                  </p>
+                  <Link href="/projects/create">
+                    <Button>
+                      <Plus className="size-4 mr-2" />
+                      Create Project
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="text-muted-foreground text-lg mb-4">
+                    No projects found
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    No projects matching &quot;{searchQuery}&quot;
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {projects.map((project) => (
+              {filteredProjects.map((project) => (
                 <Card
                   key={project.id}
                   className="hover:shadow-lg transition-shadow relative"
@@ -163,6 +222,18 @@ export function ProjectsGalleryView({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
+                          onClick={() =>
+                            handleEditClick(
+                              project.id,
+                              project.name,
+                              project.description
+                            )
+                          }
+                        >
+                          <PencilIcon className="mr-2 size-4" />
+                          Edit details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           variant="destructive"
                           onClick={() =>
                             handleDeleteClick(project.id, project.name)
@@ -180,6 +251,22 @@ export function ProjectsGalleryView({
           )}
         </div>
       </main>
+
+      {/* Edit Project Details Dialog */}
+      {projectToEdit && (
+        <ProjectEditDialog
+          open={editDialogOpen}
+          onOpenChange={(open) => {
+            setEditDialogOpen(open);
+            if (!open) {
+              handleCancelEdit();
+            }
+          }}
+          name={projectToEdit.name}
+          description={projectToEdit.description}
+          onSave={handleSaveEdit}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

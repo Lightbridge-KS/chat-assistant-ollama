@@ -2,13 +2,28 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, PencilIcon } from "lucide-react";
+import { ArrowLeft, PencilIcon, MoreVertical, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ModelSelector } from "@/components/assistant-ui/model-selector";
 import { ProjectThread } from "@/components/project/project-thread";
 import { OllamaProjectRuntimeProvider } from "@/lib/ollama-project-runtime";
 import { ProjectInstructionDialog } from "@/components/project/project-instruction-dialog";
+import { ProjectEditDialog } from "@/components/project/project-edit-dialog";
 import { useProjectStore } from "@/lib/stores/project-store";
 
 interface ProjectDetailViewProps {
@@ -22,9 +37,12 @@ export function ProjectDetailView({
 }: ProjectDetailViewProps) {
   const getProject = useProjectStore((state) => state.getProject);
   const updateProject = useProjectStore((state) => state.updateProject);
+  const deleteProject = useProjectStore((state) => state.deleteProject);
 
   const project = getProject(projectId);
+  const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Redirect to gallery if project not found
   useEffect(() => {
@@ -38,6 +56,22 @@ export function ProjectDetailView({
     if (project) {
       updateProject(projectId, { instruction: newInstruction });
     }
+  };
+
+  const handleSaveEdit = (name: string, description: string) => {
+    if (project) {
+      updateProject(projectId, { name, description });
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    deleteProject(projectId);
+    setDeleteDialogOpen(false);
+    onBack(); // Redirect to gallery
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
   };
 
   // Show loading or return null if project doesn't exist
@@ -77,10 +111,40 @@ export function ProjectDetailView({
           <div className="flex flex-1 flex-col overflow-hidden">
             {/* Project header */}
             <div className="border-b px-6 py-4">
-              <h1 className="text-xl font-semibold">{project.name}</h1>
-              <p className="text-sm text-muted-foreground">
-                {project.description}
-              </p>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h1 className="text-xl font-semibold">{project.name}</h1>
+                  <p className="text-sm text-muted-foreground">
+                    {project.description}
+                  </p>
+                </div>
+
+                {/* Three-dots dropdown menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                    >
+                      <MoreVertical className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+                      <PencilIcon className="mr-2 size-4" />
+                      Edit details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => setDeleteDialogOpen(true)}
+                    >
+                      <Trash2 className="mr-2 size-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
 
             {/* Project Thread with composer and thread list */}
@@ -100,7 +164,7 @@ export function ProjectDetailView({
                     variant="ghost"
                     size="icon"
                     className="size-8"
-                    onClick={() => setIsEditDialogOpen(true)}
+                    onClick={() => setIsInstructionDialogOpen(true)}
                   >
                     <PencilIcon className="size-4" />
                   </Button>
@@ -117,11 +181,42 @@ export function ProjectDetailView({
 
         {/* Edit Instruction Dialog */}
         <ProjectInstructionDialog
-          open={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
+          open={isInstructionDialogOpen}
+          onOpenChange={setIsInstructionDialogOpen}
           instruction={project.instruction}
           onSave={handleSaveInstruction}
         />
+
+        {/* Edit Project Details Dialog */}
+        <ProjectEditDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          name={project.name}
+          description={project.description}
+          onSave={handleSaveEdit}
+        />
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Project?</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete &quot;{project.name}&quot;? This
+                will permanently delete the project and all its conversations.
+                This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCancelDelete}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleConfirmDelete}>
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </OllamaProjectRuntimeProvider>
   );

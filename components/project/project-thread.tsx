@@ -96,7 +96,7 @@ export const ProjectThread: FC<ProjectThreadProps> = ({ projectId }) => {
               No conversations yet
             </p>
             <p className="text-sm text-muted-foreground">
-              Start a conversation using the composer above
+              Start a conversation by sending a messsage
             </p>
           </div>
         ) : (
