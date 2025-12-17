@@ -171,7 +171,7 @@ export function ProjectDetailView({
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-10">
                   {project.instruction || "No instruction provided yet."}
                 </p>
               </CardContent>
