@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Search, Plus, MoreVertical, Trash2, PencilIcon } from "lucide-react";
+import { ArrowLeft, Search, Plus } from "lucide-react";
 import {
   Card,
   CardDescription,
@@ -12,12 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -25,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ProjectActionMenu } from "@/components/project/project-action-menu";
 import { ProjectEditDialog } from "@/components/project/project-edit-dialog";
 import { useProjectStore } from "@/lib/stores/project-store";
 
@@ -208,43 +203,18 @@ export function ProjectsGalleryView({
                   </Link>
 
                   {/* Three-dot menu in absolute top-right */}
-                  <div className="absolute top-2 right-2 z-10">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreVertical className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() =>
-                            handleEditClick(
-                              project.id,
-                              project.name,
-                              project.description
-                            )
-                          }
-                        >
-                          <PencilIcon className="mr-2 size-4" />
-                          Edit details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onClick={() =>
-                            handleDeleteClick(project.id, project.name)
-                          }
-                        >
-                          <Trash2 className="mr-2 size-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                  <ProjectActionMenu
+                    triggerClassName="absolute top-2 right-2 z-10"
+                    stopPropagation={true}
+                    onEdit={() =>
+                      handleEditClick(
+                        project.id,
+                        project.name,
+                        project.description
+                      )
+                    }
+                    onDelete={() => handleDeleteClick(project.id, project.name)}
+                  />
                 </Card>
               ))}
             </div>

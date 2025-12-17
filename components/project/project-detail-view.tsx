@@ -2,15 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, PencilIcon, MoreVertical, Trash2 } from "lucide-react";
+import { ArrowLeft, PencilIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +16,7 @@ import {
 import { ModelSelector } from "@/components/assistant-ui/model-selector";
 import { ProjectThread } from "@/components/project/project-thread";
 import { OllamaProjectRuntimeProvider } from "@/lib/ollama-project-runtime";
+import { ProjectActionMenu } from "@/components/project/project-action-menu";
 import { ProjectInstructionDialog } from "@/components/project/project-instruction-dialog";
 import { ProjectEditDialog } from "@/components/project/project-edit-dialog";
 import { useProjectStore } from "@/lib/stores/project-store";
@@ -120,30 +115,10 @@ export function ProjectDetailView({
                 </div>
 
                 {/* Three-dots dropdown menu */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                    >
-                      <MoreVertical className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
-                      <PencilIcon className="mr-2 size-4" />
-                      Edit details
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={() => setDeleteDialogOpen(true)}
-                    >
-                      <Trash2 className="mr-2 size-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <ProjectActionMenu
+                  onEdit={() => setIsEditDialogOpen(true)}
+                  onDelete={() => setDeleteDialogOpen(true)}
+                />
               </div>
             </div>
 
@@ -171,7 +146,7 @@ export function ProjectDetailView({
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-10">
                   {project.instruction || "No instruction provided yet."}
                 </p>
               </CardContent>
