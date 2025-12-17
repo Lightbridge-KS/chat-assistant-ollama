@@ -119,6 +119,7 @@ async function streamOllamaResponse(
     status: {
       type: "running",
     },
+    metadata: { model: selectedModel },
   };
 
   projectStore.addProjectMessage(projectId, threadId, assistantMessage);
@@ -393,10 +394,18 @@ export function OllamaProjectRuntimeProvider({
 
   /**
    * Convert message for assistant-ui
+   * Maps our custom metadata to assistant-ui's metadata.custom field
    */
   const convertMessage = useCallback((message: ProjectThreadMessage) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return message as any;
+    // Map our metadata to assistant-ui's expected structure
+    // Our metadata (e.g., { model: "gemma3:latest" }) goes into metadata.custom
+    return {
+      ...message,
+      metadata: {
+        custom: message.metadata || {},
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any; // Type assertion required by ExternalStoreRuntime
   }, []);
 
   /**

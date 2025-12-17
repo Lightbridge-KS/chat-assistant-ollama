@@ -51,6 +51,7 @@ The production build uses nginx reverse proxy to avoid CORS issues.
 - ✅ Theme/Appearance Selector - System/Light/Dark mode with localStorage persistence
 - ✅ Vision/Image Support - Upload images with text for vision-capable models
 - ✅ Projects Feature - Organize chats by project with custom instructions (persists to localStorage)
+- ✅ Model Provenance - Each assistant message displays which model generated it (persists to localStorage)
 
 ## Project Structure
 
@@ -247,6 +248,17 @@ Provides:
 3. Upload image (JPEG, PNG, WebP, GIF)
 4. Type your message
 5. Send - model will analyze image and respond
+
+## Model Provenance
+
+Each assistant message displays the model name that generated it (e.g., "gemma3:latest") for provenance tracking.
+
+**Implementation:**
+- Model stored in `metadata: { model }` when creating assistant messages
+- `convertMessage` in runtime maps `metadata` → `metadata.custom` for assistant-ui
+- `AssistantMessage` component reads via `useMessage((m) => m.metadata?.custom?.model)`
+- Works for both regular chat and project chat
+- Persists automatically via Zustand localStorage middleware
 
 ## Projects Feature
 
