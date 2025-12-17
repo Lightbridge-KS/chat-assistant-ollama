@@ -17,6 +17,7 @@ import {
   ErrorPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
+  useMessage,
 } from "@assistant-ui/react";
 
 import type { FC } from "react";
@@ -246,12 +247,25 @@ const MessageError: FC = () => {
 };
 
 const AssistantMessage: FC = () => {
+  // Access model name from metadata.custom (mapped by convertMessage in runtime)
+  const modelName = useMessage((m) => {
+    const custom = m.metadata?.custom as Record<string, unknown> | undefined;
+    return custom?.model as string | undefined;
+  });
+
   return (
     <MessagePrimitive.Root asChild>
       <div
         className="aui-assistant-message-root relative mx-auto w-full max-w-[var(--thread-max-width)] animate-in py-4 duration-150 ease-out fade-in slide-in-from-bottom-1 last:mb-24"
         data-role="assistant"
       >
+        {/* Model name label for provenance tracking */}
+        {modelName && (
+          <div className="aui-assistant-message-model mx-2 mb-1 text-xs text-muted-foreground/70">
+            {modelName}
+          </div>
+        )}
+
         <div className="aui-assistant-message-content mx-2 leading-7 break-words text-foreground">
           <MessagePrimitive.Parts
             components={{

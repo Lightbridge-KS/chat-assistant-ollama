@@ -107,6 +107,7 @@ async function streamOllamaResponse(
     status: {
       type: "running",
     },
+    metadata: { model: selectedModel },
   };
 
   chatStore.addMessage(assistantMessage);
@@ -374,12 +375,19 @@ export function OllamaRuntimeProvider({ children }: { children: ReactNode }) {
   );
 
   /**
-   * Convert message for assistant-ui (identity function since types match)
+   * Convert message for assistant-ui
+   * Maps our custom metadata to assistant-ui's metadata.custom field
    */
   const convertMessage = useCallback((message: ThreadMessageLike) => {
-    // Our messages are already in the correct format
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return message as any;  // Type assertion required by ExternalStoreRuntime
+    // Map our metadata to assistant-ui's expected structure
+    // Our metadata (e.g., { model: "gemma3:latest" }) goes into metadata.custom
+    return {
+      ...message,
+      metadata: {
+        custom: message.metadata || {},
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any; // Type assertion required by ExternalStoreRuntime
   }, []);
 
   /**
