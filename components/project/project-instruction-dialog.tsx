@@ -60,7 +60,7 @@ export function ProjectInstructionDialog({
               placeholder="Describe how you want the assistant to behave in this project..."
               value={draftInstruction}
               onChange={(e) => setDraftInstruction(e.target.value)}
-              rows={8}
+              rows={12}
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
